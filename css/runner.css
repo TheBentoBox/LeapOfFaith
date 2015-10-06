@@ -1,0 +1,22 @@
+body {
+	margin: auto;
+	width: 1280px;
+    background: #050505;
+    font-family: verdana, sans serif;
+	color: #eee;
+}
+
+h1 {
+	font-family: Audiowide, verdana, sans serif;
+	font-size: 20pt;
+}
+
+canvas {
+    box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+    background: cornflowerblue;
+	margin-bottom: 2%;
+}
+
+audio {
+	display: none;
+}
