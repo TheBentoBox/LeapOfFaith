@@ -1,6 +1,11 @@
-// IIFE
-(function(){
-	"use strict";
+// engine.js
+"use strict";
+// if game exists use the existing copy
+// else create a new object literal
+var game = game || {};
+
+game.engine = (function(){
+	console.log("loaded engine.js module");
 	
 	/* VARIABLES */
 	// SCREEN AND AUDIO VARIABLES
@@ -8,6 +13,8 @@
 	var songSource;				// current song information
 	var canvas,ctx;				// canvas references
 	var mouseX, mouseY;			// mouse coordinates
+	var animationID;			// stores animation ID of animation frame
+	var mouseDown = false;		// if the mouse is being held down
 	
 	// ASSETS
 	var grassImg = new Image();
@@ -52,7 +59,7 @@
 	
 	
 	// Set up canvas and game variables
-	function init(){
+	function init() {
 		// SETUP: canvas and audio
 		// canvas
 		canvas = document.querySelector('canvas');
@@ -64,6 +71,46 @@
 		// load default song and title, and play
 		playStream(audioElement);
 		
+		// taps working as jumps
+		canvas.addEventListener("mousedown", function(e) {
+			mouseDown = true;
+			e.preventDefault();
+			
+			// if the game is running (player is alive)
+			if (currentGameState == GAME_STATE.RUNNING) {
+				// toggle off player's ability to jump further
+				player.canJump = false;
+			};
+			// if the player has died
+			if (currentGameState == GAME_STATE.DEAD) {
+				// restart the game
+				setupGame();
+			};
+		});
+		canvas.addEventListener("touchstart", function(e) { 
+			mouseDown = true;
+			e.preventDefault();
+			
+			// if the game is running (player is alive)
+			if (currentGameState == GAME_STATE.RUNNING) {
+				// toggle off player's ability to jump further
+				player.canJump = false;
+			};
+			// if the player has died
+			if (currentGameState == GAME_STATE.DEAD) {
+				// restart the game
+				setupGame();
+			};
+		});
+		// taps working as jumps
+		canvas.addEventListener("mouseup", function(e) { mouseDown = false; });
+		canvas.addEventListener("touchend", function(e) { mouseDown = false; });
+		
+		// callback for button presses
+		window.addEventListener("keydown", keyPress);
+		// callback for button presses
+		window.addEventListener("keyup", keyRelease);
+		
 		loadAssets();
 		setupGame();
 		
@@ -74,6 +121,7 @@
 	// Setup a new game
 	function setupGame() {
 		// reset variables
+		score = 0;
 		terrains = [];
 		currentGameState = GAME_STATE.RUNNING;
 		
@@ -87,7 +135,7 @@
 		
 		// starting variables
 		currentTerrainType = Math.round(Math.random()+1);
-		terrainCount = Math.round(Math.random()*5);
+		terrainCount = Math.round(Math.random()+1);
 		
 		// create the player
 		player = new Player();
@@ -109,7 +157,7 @@
 	// main game tick
 	function update() { 
 		// scedule next draw frame
-		requestAnimationFrame(update);
+		animationID = requestAnimationFrame(update);
 		
 		// clear the screen
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -269,7 +317,7 @@
 			};
 		
 			// try to jump
-			if (keys[KEY.SPACE]) {
+			if (keys[KEY.SPACE] || mouseDown) {
 				// if the player is able to jump
 				if (this.canJump) {
 					// if they're on the ground, give initial push
@@ -286,7 +334,7 @@
 						if (this.velocity.y < -15)
 							this.canJump = false;
 					};
-				}
+				};
 			};
 			
 			// update onGround variable
@@ -426,11 +474,19 @@
 			};
 		};
 	};
-
-	// call init on load
-	window.addEventListener("load", init);
-	// callback for button presses
-	window.addEventListener("keydown", keyPress);
-	// callback for button presses
-	window.addEventListener("keyup", keyRelease);
+	
+	// return public interface for engine module
+	return {
+		init: init,
+		setupGame: setupGame,
+		loadAssets: loadAssets,
+		playStream: playStream,
+		update: update,
+		Terrain: Terrain,
+		Player: Player,
+		getMouse: getMouse,
+		requestFullscreen: requestFullscreen,
+		keyPress: keyPress,
+		keyRelease: keyRelease
+	};
 }());

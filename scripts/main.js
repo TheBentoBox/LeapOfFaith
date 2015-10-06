@@ -5,25 +5,26 @@ var game = game || {};
 
 game.main = {
 	/* PROPERTIES */
-	WIDTH : 1260,				// canvas width
-    HEIGHT: 720,				// canvas height
+	WIDTH : 1260,			// canvas width
+    HEIGHT: 720,			// canvas height
     canvas: null,			// canvas reference
     ctx: null,				// canvas 2D context reference
+	engine: undefined,
 	
-	audioElement: null,	// audio player reference
+	audioElement: null,		// audio player reference
 	songSource: null,		// current song source
 	
 	mouse: null,			// mouse position vector
 	
-   	prevTime: 0,				// time of previous frame
-    debug: true,				// debug mode toggle
+   	prevTime: 0,			// time of previous frame
+    debug: true,			// debug mode toggle
 	
-	paused: false,				// whether or not the game is paused
-	animationID: 0,				// controls drawing state (for pausing, etc.)
+	paused: false,			// whether or not the game is paused
+	animationID: 0,			// controls drawing state (for pausing, etc.)
 	
 	/* METHODS */
 	// initialize game
-	init : function() {
+	init: function() {
 		if (this.debug) console.log("Initializing game...");
 		// initialize canvas
 		this.canvas = document.querySelector('canvas');
@@ -96,4 +97,4 @@ game.main = {
 		ctx.fillText("... PAUSED ...", this.WIDTH/2, this.HEIGHT/2, "40pt Courier", "white");
 		ctx.restore();
 	}
-}
+};
