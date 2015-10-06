@@ -6,6 +6,8 @@ var game = game || {};
 
 window.onload = function(){
 	console.log("Loading game...");
+	game.engine.init();
+	game.main.engine = game.engine;
 	game.main.init();
 }
 
@@ -14,6 +16,7 @@ window.onblur = function() {
 	
 	// stop the animation loop
 	cancelAnimationFrame(game.main.animationID);
+	cancelAnimationFrame(game.main.engine.animationID);
 	
 	// call update() once so the draw screen gets drawn
 	game.main.update();
@@ -24,6 +27,7 @@ window.onfocus = function() {
 	
 	// stop the animation loop, just in case it's running
 	cancelAnimationFrame(game.main.animationID);
+	cancelAnimationFrame(game.main.engine.animationID);
 	
 	game.main.paused = false;
 	
