@@ -9,31 +9,15 @@ window.onload = function(){
 	game.engine.init();
 	game.main.engine = game.engine;
 	game.main.init();
-}
+};
 
 window.onblur = function() {
-	game.main.paused = true;
-	
-	// stop the animation loop
-	cancelAnimationFrame(game.main.animationID);
-	cancelAnimationFrame(game.main.engine.animationID);
-	
-	// call update() once so the draw screen gets drawn
-	game.main.update();
+	game.main.pauseGame();
 };
 
 window.onfocus = function() {
-	console.log("focus at " + Date());
-	
-	// stop the animation loop, just in case it's running
-	cancelAnimationFrame(game.main.animationID);
-	cancelAnimationFrame(game.main.engine.animationID);
-	
-	game.main.paused = false;
-	
-	// restart the loop
-	game.main.update();
-}
+	game.main.resumeGame();
+};
 
 // callback for button presses
 window.addEventListener("keydown", game.main.keyPress);
