@@ -52,13 +52,13 @@ game.engine = (function(){
 	};
 	// Player
 	var players = [];
+	var PLAYER_WIDTH = 50; 		// width of a player
 	var PLAYER_HEIGHT = 50; 	// height of a player
 	
 	// PHYSICS VARIABLES
 	var GRAVITY = 0.98;			// global gravity
 	var jumpFunction = function() { return 1000/60*TERRAIN_WIDTH/globalGameSpeed; };
 	var globalLastTerrain = {};
-	var globalJumpDelay;
 	
 	
 	
@@ -75,31 +75,39 @@ game.engine = (function(){
 		// load default song and title, and play
 		playStream(audioElement);
 		
-		// taps working as jumps
+		loadAssets();
+		setupGame();
+		
+		// taps working as jumps 
 		canvas.addEventListener("mousedown", function(e) {
 			mouseDown = true;
 			e.preventDefault();
 			
-			// if the game is running (player is alive)
-			if (currentGameState == GAME_STATE.RUNNING) {
-				for (var i = 0; i < 3; ++i) {
-					// loop players and jump after a delay based on party order
-					setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
-				};
+			// Switch party order on clicks
+			// loop and cycle
+			for (var i = 0; i < players.length; ++i) {
+				// left click - cycle left
+				if (e.which == 1)
+					players[i].cycleOrder(1);
+				// right click - cycle right
+				if (e.which == 3)
+					players[i].cycleOrder(-1);
 			};
+			
 			// if the player has died
 			if (currentGameState == GAME_STATE.DEAD) {
 				// restart the game
 				setupGame();
 			};
-		});
+		}.bind(this));
+		// compatibility for touch devices
 		canvas.addEventListener("touchstart", function(e) { 
 			mouseDown = true;
 			e.preventDefault();
 			
 			// if the game is running (player is alive)
 			if (currentGameState == GAME_STATE.RUNNING) {
-				for (var i = 0; i < 3; ++i) {
+				for (var i = 0; i < players.length; ++i) {
 					// loop players and jump after a delay based on party order
 					setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
 				};
@@ -109,7 +117,7 @@ game.engine = (function(){
 				// restart the game
 				setupGame();
 			};
-		});
+		}.bind(this));
 		// taps working as jumps
 		canvas.addEventListener("mouseup", function(e) { mouseDown = false; });
 		canvas.addEventListener("touchend", function(e) { mouseDown = false; });
@@ -118,9 +126,6 @@ game.engine = (function(){
 		window.addEventListener("keydown", keyPress);
 		// callback for button presses
 		window.addEventListener("keyup", keyRelease);
-		
-		loadAssets();
-		setupGame();
 		
 		// BEGIN: start animation loop
 		update();
@@ -146,9 +151,9 @@ game.engine = (function(){
 		terrainCount = Math.round(Math.random()+1);
 		
 		// create the player
-		players[0] = new Player(0);
-		players[1] = new Player(1);
-		players[2] = new Player(2);
+		for (var i = 0; i < 3; ++i) {
+			players[i] = new Player(i);
+		};
 	};
 	
 	// Load game assets (images and sounds)
@@ -165,20 +170,24 @@ game.engine = (function(){
 	};
 	
 	// main game tick
-	function update() { 
+	function update() {
 		// scedule next draw frame
 		animationID = requestAnimationFrame(update);
 	 	
-	 	// if paused so, bail out of loop
+	 	// if paused, bail out of loop
 		if (paused && currentGameState == GAME_STATE.RUNNING) {
 			return;
 		}
+		
+		// if there are no players left, end the game
+		if (players.length == 0)
+			currentGameState = GAME_STATE.DEAD;
 		
 		// clear the screen
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		
 		// update players
-		for (var i = 0; i < 3; ++i) {
+		for (var i = 0; i < players.length; ++i) {
 			players[i].update();
 		};
 		
@@ -213,7 +222,7 @@ game.engine = (function(){
 				if (currentTerrainType != TERRAIN_TYPE.GRASS) {
 					currentTerrainType = TERRAIN_TYPE.GRASS;
 					// grass patches get shorter as game speeds up
-					terrainCount = Math.max(2, 15 - globalGameSpeed);
+					terrainCount = Math.max(3, 15 - globalGameSpeed);
 				}
 				// otherwise, generate another "danger terrain"
 				else {
@@ -255,17 +264,16 @@ game.engine = (function(){
 			// slide terrain object left
 			this.position.x -= globalGameSpeed;
 			
-			// try to push players if this terrain is solid
-			for (var i = 0; i < 3; ++i) {
-				var player = players[i];
-				
+			// try to push players
+			for (var i = 0; i < players.length; ++i) {
+				// only push if this terrain is solid
 				if (this.terrainType == TERRAIN_TYPE.GRASS) {
 					// if the player's y overlaps the terrain's
-					if (player.position.y + PLAYER_HEIGHT > this.position.y && player.position.y < this.position.y + TERRAIN_HEIGHT) {
+					if (players[i].position.y + PLAYER_HEIGHT > this.position.y && players[i].position.y < this.position.y + TERRAIN_HEIGHT) {
 						// if the player's side is pushed into the terrain
-						if (player.position.x + PLAYER_HEIGHT > this.position.x && player.position.x < this.position.x) {
+						if (players[i].position.x + PLAYER_WIDTH > this.position.x && players[i].position.x < this.position.x + TERRAIN_WIDTH) {
 							// push the player against the terrain
-							player.position.x = this.position.x - PLAYER_HEIGHT;
+							players[i].position.x = this.position.x - PLAYER_WIDTH;
 						};
 					};
 				};
@@ -316,6 +324,7 @@ game.engine = (function(){
 		this.maxJumps = 2;		// max number of jumps they can do in sequence
 		this.order = order;		// order in the party
 		this.onGround = true;	// whether the player is currently grounded
+		this.color = "rgb(0, 0, " + this.order*75 + ")";
 		
 		// MUTATOR: force player's position, within bounds of canvas
 		this.setPosition = function(x, y) {
@@ -325,7 +334,7 @@ game.engine = (function(){
 			};
 		};
 		
-		// FUNCTION: force player's position
+		// FUNCTION: force player's velocity
 		this.setVelocity = function(x, y) {
 			this.velocity = {
 				x: x,
@@ -357,24 +366,42 @@ game.engine = (function(){
 			};
 		}.bind(this);
 		
+		// FUNCTION: cycle order by a number
+		this.cycleOrder = function(num) {
+			this.order = (this.order + num < 0 ? players.length + (this.order + num) : this.order + num) % players.length;
+		};
+		
 		// FUNCTION: update player object
 		this.update = function() {
-			// try to send game to death state if off screen
-			if (this.position.y > canvas.height*2) {
-				currentGameState = GAME_STATE.DEAD;
+			// clamp order within player list
+			this.order = clamp(this.order, 0, players.length-1);
+		
+			// kill player if off screen
+			if (this.position.y > canvas.height*2) {					
+				// remove this player from the list of players
+				console.log("Dead at " + this.order + "/" + players.length + " at y " + this.position.y);
+				
+				// slide ones behind this one forward
+				for (var i = 0; i < players.length; ++i) {
+					if (players[i].order > this.order)
+						--players[i].order;
+				};
+				
+				// delete this one
+				players.splice(players.indexOf(this), 1);
 			};
 			
 			// try to move towards where it should be in the running order
-			if (this.position.x != 275 - order*75) {
+			if (this.position.x != 275 - this.order*75) {
 				// only try to move if its above the terrain level
-				if (this.position.y < canvas.height - TERRAIN_HEIGHT) {
+				if (this.position.y + PLAYER_HEIGHT <= canvas.height - TERRAIN_HEIGHT) {
 					// if it's close, round off
-					if (Math.abs(this.position.x - (275 - order*75)) < 1) {
-						this.position.x = 275 - order*75
+					if (Math.abs(this.position.x - (275 - this.order*75)) <= 3) {
+						this.position.x = 275 - this.order*75
 					}
-					// otherwise, move towrds
+					// otherwise, move towards where it should be
 					else {
-						this.position.x -= Math.sign(this.position.x - (275 - order*75));
+						this.position.x -= Math.sign(this.position.x - (275 - this.order*75))*3;
 					};
 				};
 			};
@@ -382,13 +409,14 @@ game.engine = (function(){
 			// update onGround variable
 			this.onGround = false;
 			
+			// update if they're on the ground
 			// loop through terrain objects
 			for (var i = 0; i < terrains.length; ++i) {
 				// get currently looped terrain object
 				var currentTerrain = terrains[i];
 				
 				// update onGround variable by comparing pos to each terrain object
-				if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x+PLAYER_HEIGHT > currentTerrain.position.x) {
+				if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x+PLAYER_WIDTH > currentTerrain.position.x) {
 					//console.log("Lined up, my feet are at " + (this.position.y + PLAYER_HEIGHT) + " and the terrain is at " + currentTerrain.position.y + " and it is of type " + currentTerrain.terrainType);
 					if (this.position.y + PLAYER_HEIGHT == currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS && this.velocity.y >= 0) {
 						this.onGround = true;
@@ -418,7 +446,7 @@ game.engine = (function(){
 						
 						// check is position we'd move to is safe (above terrain)
 						// terrain we're checking is below is
-						if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x+PLAYER_HEIGHT > currentTerrain.position.x) {
+						if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x+PLAYER_WIDTH > currentTerrain.position.x) {
 							// terrain below us is solid ground and we'd be inside it if we moved down
 							if (this.position.y + PLAYER_HEIGHT + moveDist > currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS) {
 								// it's not safe to move
@@ -450,9 +478,12 @@ game.engine = (function(){
 				
 			// DRAW: draw the player
 			ctx.save();
-			ctx.fillStyle = "rgb(0, 0, " + order*75 + ")";
-			ctx.fillRect(this.position.x, this.position.y, PLAYER_HEIGHT, PLAYER_HEIGHT);
+			ctx.fillStyle = this.color;
+			ctx.fillRect(this.position.x, this.position.y, PLAYER_WIDTH, PLAYER_HEIGHT);
 			ctx.fill();
+			//ctx.strokeStyle = "white";
+			//ctx.fillText(this.order, this.position.x + PLAYER_HEIGHT/2, this.position.y - 20);
+			//ctx.stroke();
 			ctx.restore();
 		};
 	};
@@ -512,8 +543,8 @@ game.engine = (function(){
 		// spacebar - jump!
 		if (e.keyCode == KEY.SPACE) {
 			// loop players and jump after a delay based on party order
-			for (var i = 0; i < 3; ++i) {
-				setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
+			for (var i = 0; i < players.length; ++i) {
+				setTimeout(players[i].jump, players[i].order*jumpFunction(), 15, 1);
 				globalLastTerrain = terrains[terrains.length-1];
 			};
 			

@@ -29,6 +29,15 @@ function fillText(ctx, string, x, y, css, color) {
 	ctx.restore();
 };
 
+function rectangleContainsPoint(rect, point) {
+	if (rect.width <= 0 || rect.height <= 0) {
+		return false;
+	}
+	
+	return (point.x >= rect.x && point.x <= rect.x + rect.width &&
+			point.y >= rect.y && point.y <= rect.y + rect.height);
+};
+
  // activate fullscreen
 function requestFullscreen(element) {
 	if (element.requestFullscreen) {
