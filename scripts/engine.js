@@ -28,12 +28,17 @@ game.engine = (function(){
 		SPACE: 32,
 		A: 65,
 		D: 68,
+		E: 69,
+		P: 80,
+		Q: 81,
+		R: 82,
 		S: 83,
 		W: 87
 	};
 	var GAME_STATE = {			// "enum" of the current status of the gmae
-		RUNNING: 0,
-		DEAD: 1
+		RUNNING: 0,				// players are alive and running
+		SWITCHING: 1,			// players are swapping positions
+		DEAD: 2					// entire party is dead
 	};
 	var currentGameState = 0;	// what is currently happening in the game
 	var keys = [];				// array to store pressed keys
@@ -52,8 +57,61 @@ game.engine = (function(){
 	};
 	// Player
 	var players = [];
-	var PLAYER_WIDTH = 50; 		// width of a player
-	var PLAYER_HEIGHT = 50; 	// height of a player
+	// Player classes
+	var PLAYER_CLASSES = {		// enum storing class info
+		PALADIN: {
+			name: "Paladin",
+			health: 150,
+			color: "rgb(255, 255, 200)",
+			img: new Image(),
+			width: 85,
+			height: 125
+		},
+		RANGER: {
+			name: "Ranger",
+			health: 75,
+			color: "rgb(100, 0, 0)",
+			img: new Image(),
+			width: 80,
+			height: 125
+		},
+		MAGI: {
+			name: "Magi",
+			health: 100,
+			color: "rgb(0, 0, 100)",
+			img: new Image(),
+			width: 50,
+			height: 50
+		}
+	};
+	// Enemies
+	var enemies = [];
+	var ENEMY_TYPES = {
+		GOBLIN: {
+			name: "Goblin",
+			health: 25,
+			color: "rgb(50, 125, 0)",
+			img: new Image(),
+			width: 85,
+			height: 85
+		},
+		RAT: {
+			name: "Rat",
+			health: 15,
+			color: "rgb(127, 127, 127)",
+			img: new Image(),
+			width: 100,
+			height: 50
+		},
+		BAT: {
+			name: "Bat",
+			health: 20,
+			color: "rgb(75, 75, 75)",
+			img: new Image(),
+			width: 85,
+			height: 50
+		}
+	};
 	
 	// PHYSICS VARIABLES
 	var GRAVITY = 0.98;			// global gravity
@@ -84,14 +142,19 @@ game.engine = (function(){
 			e.preventDefault();
 			
 			// Switch party order on clicks
-			// loop and cycle
-			for (var i = 0; i < players.length; ++i) {
-				// left click - cycle left
-				if (e.which == 1)
-					players[i].cycleOrder(1);
-				// right click - cycle right
-				if (e.which == 3)
-					players[i].cycleOrder(-1);
+			// loop and cycle if they aren't running already
+			if (currentGameState == GAME_STATE.RUNNING) {
+				for (var i = 0; i < players.length; ++i) {
+					// left click - cycle left
+					if (e.which == 1)
+						players[i].cycleOrder(1);
+					// right click - cycle right
+					if (e.which == 3)
+						players[i].cycleOrder(-1);
+				};
+				
+				// players are now switching positions
+				currentGameState = GAME_STATE.SWITCHING;
 			};
 			
 			// if the player has died
@@ -148,18 +211,22 @@ game.engine = (function(){
 		
 		// starting variables
 		currentTerrainType = Math.round(Math.random()+1);
-		terrainCount = Math.round(Math.random()+1);
+		terrainCount = 2;
 		
 		// create the player
-		for (var i = 0; i < 3; ++i) {
-			players[i] = new Player(i);
-		};
+		players[0] = new Player(PLAYER_CLASSES.PALADIN);
+		players[1] = new Player(PLAYER_CLASSES.RANGER);
+		players[2] = new Player(PLAYER_CLASSES.MAGI);
+		
+		enemies[0] = new Enemy(ENEMY_TYPES.GOBLIN);
 	};
 	
 	// Load game assets (images and sounds)
 	function loadAssets() {
 		grassImg.src = "assets/grass.png";
 		lavaImg.src = "assets/lava.png";
+		PLAYER_CLASSES.PALADIN.img.src = "assets/paladin.png";
+		PLAYER_CLASSES.RANGER.img.src = "assets/ranger.png";
 	};
 	
 	// change song
@@ -191,6 +258,11 @@ game.engine = (function(){
 			players[i].update();
 		};
 		
+		// update enemies
+		for (var i = 0; i < enemies.length; ++i) {
+			enemies[i].update();
+		};
+		
 		// update & draw terrain objects
 		for (var i = 0; i < terrains.length; ++i) {
 			// update it
@@ -211,7 +283,9 @@ game.engine = (function(){
 		}
 		
 		// attempt to create new terrain objects if last one is fully on screen
-		var lastX = terrains[terrains.length-1].position.x+TERRAIN_WIDTH;	// get last terrain object's position
+		// get position of last terrain object's edge
+		var lastX = terrains[terrains.length-1].position.x+TERRAIN_WIDTH;
+		// if the last 
 		if (lastX < canvas.width) {
 			terrains[terrains.length] = new Terrain(lastX);	// create a new terrain at the edge of the last one
 			--terrainCount;	// subtract from the number of terrains of current type to make
@@ -229,7 +303,7 @@ game.engine = (function(){
 					// terrain type becomes random danger
 					currentTerrainType = Math.round(Math.random()+1);
 					// danger patches get larger as game speeds up
-					terrainCount = Math.min(5, Math.floor(Math.random()*globalGameSpeed/5) + 1);
+					terrainCount = Math.min(7, Math.floor(Math.random()*globalGameSpeed/5) + 2);
 				}
 			}
 		};
@@ -249,7 +323,7 @@ game.engine = (function(){
 	};
 	
 	// CLASS: terrain object
-	var Terrain = function(startX) {		
+	function Terrain(startX) {		
 		/* VARIABLES */
 		// starting terrain position
 		this.position = {
@@ -269,11 +343,11 @@ game.engine = (function(){
 				// only push if this terrain is solid
 				if (this.terrainType == TERRAIN_TYPE.GRASS) {
 					// if the player's y overlaps the terrain's
-					if (players[i].position.y + PLAYER_HEIGHT > this.position.y && players[i].position.y < this.position.y + TERRAIN_HEIGHT) {
+					if (players[i].position.y + players[i].bounds.height > this.position.y && players[i].position.y < this.position.y + TERRAIN_HEIGHT) {
 						// if the player's side is pushed into the terrain
-						if (players[i].position.x + PLAYER_WIDTH > this.position.x && players[i].position.x < this.position.x + TERRAIN_WIDTH) {
+						if (players[i].position.x + players[i].bounds.width > this.position.x && players[i].position.x < this.position.x + TERRAIN_WIDTH) {
 							// push the player against the terrain
-							players[i].position.x = this.position.x - PLAYER_WIDTH;
+							players[i].position.x = this.position.x - players[i].bounds.width;
 						};
 					};
 				};
@@ -309,22 +383,26 @@ game.engine = (function(){
 	};
 	
 	// CLASS: player object
-	var Player = function(order) {
+	function Player(classType) {
 		/* VARIABLES */
-		// starting player position
-		this.position = {
-			x: 275 - order*75,
-			y: canvas.height-TERRAIN_HEIGHT-PLAYER_HEIGHT-250
+		this.classType = classType;		// player's class - Paladin, Ranger, or Magi
+		this.numJumps = 0;				// number of jumps they've done in current sequence
+		this.maxJumps = 2;				// max number of jumps they can do in sequence
+		this.order = players.length; 	// order in the party - defaults to last
+		this.onGround = true;			// whether the player is currently grounded
+		this.color = this.classType.color; // color player will draw at if they have no image
+		this.bounds = {
+			width: this.classType.width,
+			height: this.classType.height
 		};
-		this.velocity = {
+		this.position = {				// starting player position
+			x: 275 - players.length*75,
+			y: canvas.height-TERRAIN_HEIGHT-this.bounds.height-250
+		};
+		this.velocity = {				// starting player velocity
 			x: 0,
 			y: 0
 		};
-		this.numJumps = 0;		// number of jumps they've done in current sequence
-		this.maxJumps = 2;		// max number of jumps they can do in sequence
-		this.order = order;		// order in the party
-		this.onGround = true;	// whether the player is currently grounded
-		this.color = "rgb(0, 0, " + this.order*75 + ")";
 		
 		// MUTATOR: force player's position, within bounds of canvas
 		this.setPosition = function(x, y) {
@@ -333,45 +411,35 @@ game.engine = (function(){
 				y: clamp(y, 0, canvas.height)
 			};
 		};
-		
-		// FUNCTION: force player's velocity
+		// MUTATOR: force player's velocity
 		this.setVelocity = function(x, y) {
 			this.velocity = {
 				x: x,
 				y: y
 			};
 		};
-		
-		// FUNCTION: force a jump
-		this.jump = function(force, startingPush) {
-			// first check if they're on the ground
-			if (this.numJumps < this.maxJumps) {
-				++this.numJumps;
-			
-				// give the initial thrust
-				this.velocity.y = -force;
-				this.position.y -= startingPush;
-				this.onGround = false;
-				
-				/* CURRENTLY NOT USED - HOVERING JUMPS */
-				// otherwise, hold them in the air a bit
-				//else { 
-				//	this.velocity.y -= 1.5;
-				//	// stop from jumping after they get too fast
-				//	if (this.velocity.y < -15) {
-				//		this.canJump = false;
-				//		console.log("Player " + order + " can't jump anymore");
-				//	};
-				//};
-			};
-		}.bind(this);
-		
 		// FUNCTION: cycle order by a number
+		// can be negative to cycle right
 		this.cycleOrder = function(num) {
 			this.order = (this.order + num < 0 ? players.length + (this.order + num) : this.order + num) % players.length;
 		};
+		// FUNCTION: prints player information to console
+		this.toString = function() {
+			console.log("Player in position " + this.order + " is at x" + this.position.x + " y" + this.position.y);
+		};
+		// FUNCTION: force a jump
+		this.jump = function(speed, startingPush, force) {
+			// first check if they're on the ground
+			if (this.numJumps < this.maxJumps || force) {
+				++this.numJumps;
+			
+				// give the initial thrust
+				this.velocity.y = -speed;
+				this.position.y -= startingPush;
+				this.onGround = false;
+			};}.bind(this);
 		
-		// FUNCTION: update player object
+		// FUNCTION: main player object tick
 		this.update = function() {
 			// clamp order within player list
 			this.order = clamp(this.order, 0, players.length-1);
@@ -394,7 +462,7 @@ game.engine = (function(){
 			// try to move towards where it should be in the running order
 			if (this.position.x != 275 - this.order*75) {
 				// only try to move if its above the terrain level
-				if (this.position.y + PLAYER_HEIGHT <= canvas.height - TERRAIN_HEIGHT) {
+				if (this.position.y + this.bounds.height <= canvas.height - TERRAIN_HEIGHT) {
 					// if it's close, round off
 					if (Math.abs(this.position.x - (275 - this.order*75)) <= 3) {
 						this.position.x = 275 - this.order*75
@@ -403,6 +471,17 @@ game.engine = (function(){
 					else {
 						this.position.x -= Math.sign(this.position.x - (275 - this.order*75))*3;
 					};
+				};
+					
+				// loop players and update game state if they're done switching
+				if (currentGameState == GAME_STATE.SWITCHING) {
+					var allSwitched = true;
+					for (var i = 0; i < players.length; ++i)
+						if (players[i].position.x != 275 - players[i].order*75)
+							allSwitched = false;
+							
+					if (allSwitched)
+						currentGameState = GAME_STATE.RUNNING;
 				};
 			};
 			
@@ -416,9 +495,8 @@ game.engine = (function(){
 				var currentTerrain = terrains[i];
 				
 				// update onGround variable by comparing pos to each terrain object
-				if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x+PLAYER_WIDTH > currentTerrain.position.x) {
-					//console.log("Lined up, my feet are at " + (this.position.y + PLAYER_HEIGHT) + " and the terrain is at " + currentTerrain.position.y + " and it is of type " + currentTerrain.terrainType);
-					if (this.position.y + PLAYER_HEIGHT == currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS && this.velocity.y >= 0) {
+				if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.width > currentTerrain.position.x) {
+					if (this.position.y + this.bounds.height == currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS && this.velocity.y >= 0) {
 						this.onGround = true;
 						break;
 					}
@@ -446,9 +524,9 @@ game.engine = (function(){
 						
 						// check is position we'd move to is safe (above terrain)
 						// terrain we're checking is below is
-						if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x+PLAYER_WIDTH > currentTerrain.position.x) {
+						if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.width > currentTerrain.position.x) {
 							// terrain below us is solid ground and we'd be inside it if we moved down
-							if (this.position.y + PLAYER_HEIGHT + moveDist > currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS) {
+							if (this.position.y + this.bounds.height + moveDist > currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS) {
 								// it's not safe to move
 								positionSafe = false;
 								break;
@@ -457,13 +535,13 @@ game.engine = (function(){
 					};
 					
 					// if we're safe to move, shift down
-					if (positionSafe || this.position.y + PLAYER_HEIGHT > currentTerrain.position.y) {
+					if (positionSafe || this.position.y + this.bounds.height > currentTerrain.position.y) {
 						this.position.y += moveDist;
 					}
 					// otherwise, stick to the terrain
 					else {
 						this.velocity.y = 0;
-						this.position.y = canvas.height - TERRAIN_HEIGHT - PLAYER_HEIGHT;
+						this.position.y = canvas.height - TERRAIN_HEIGHT - this.bounds.height;
 						this.numJumps = 0;
 						this.onGround = true;
 						break;
@@ -472,36 +550,421 @@ game.engine = (function(){
 			}
 			else {
 				this.velocity.y = 0;
-				this.position.y = canvas.height - TERRAIN_HEIGHT - PLAYER_HEIGHT;
+				this.position.y = canvas.height - TERRAIN_HEIGHT - this.bounds.height;
 				this.numJumps = 0;
 			};
 				
 			// DRAW: draw the player
+			this.draw();
+		};
+	
+		// FUCNTION: main player draw call
+		this.draw = function() {
 			ctx.save();
-			ctx.fillStyle = this.color;
-			ctx.fillRect(this.position.x, this.position.y, PLAYER_WIDTH, PLAYER_HEIGHT);
-			ctx.fill();
-			//ctx.strokeStyle = "white";
-			//ctx.fillText(this.order, this.position.x + PLAYER_HEIGHT/2, this.position.y - 20);
-			//ctx.stroke();
+			switch (this.classType) {
+				case (PLAYER_CLASSES.MAGI):
+					ctx.fillStyle = this.color;
+					ctx.fillRect(this.position.x, this.position.y, this.bounds.width, this.bounds.height);
+					ctx.fill();
+					break;
+				default:
+					ctx.drawImage(this.classType.img, this.position.x, this.position.y);
+					break;
+			};
+			ctx.restore();
+		};
+			
+		/* ATTACKING */
+		// FUNCTION: 1st attack ('Q')
+		this.baseAttack = function() {
+			switch(this.classType) {
+				case PLAYER_CLASSES.PALADIN:
+					this.jump(15, 1, true);
+					break;
+				case PLAYER_CLASSES.RANGER:
+					this.setPosition(this.position.x, this.position.y/2);
+					break;
+				case PLAYER_CLASSES.MAGI:
+					terrains.splice(terrains.length-1, 1);
+					break;
+			};
+		};
+	};
+ 
+	// CLASS: projectile
+	function Projectile(x, y, towards, projType) {
+		// type of projectile
+		this.projType = projType;
+		// the projectile's bounding box
+		this.bounds = {
+			width: this.projType.width,
+			height: this.projType.height
+		};
+		// starting projectile position
+		this.position = {
+			x: x,
+			y: y
+		};
+		// starting projectile velocity
+		// directs itself towards the "towards" object passed in
+		this.velocity = {
+			x: (towards.position.x - this.position.x)/20,
+			y: (towards.position.y - this.position.y)/20
+		};
+		
+		// MUTATOR: force player's position, within bounds of canvas
+		this.setPosition = function(x, y) {
+			this.position = {
+				x: x,
+				y: y
+			};
+		};
+		// MUTATOR: force player's velocity
+		this.setVelocity = function(x, y) {
+			this.velocity = {
+				x: x,
+				y: y
+			};
+		};
+		// FUNCTION: cycle order by a number
+		// can be negative to cycle right
+		this.cycleOrder = function(num) {
+			this.order = (this.order + num < 0 ? players.length + (this.order + num) : this.order + num) % players.length;
+		};
+		// FUNCTION: prints player information to console
+		this.toString = function() {
+			console.log("Player in position " + this.order + " is at x" + this.position.x + " y" + this.position.y);
+		};
+		// FUNCTION: force a jump
+		this.jump = function(speed, startingPush, force) {
+			// first check if they're on the ground
+			if (this.numJumps < this.maxJumps || force) {
+				++this.numJumps;
+			
+				// give the initial thrust
+				this.velocity.y = -speed;
+				this.position.y -= startingPush;
+				this.onGround = false;
+			};}.bind(this);
+		
+		// FUNCTION: main player object tick
+		this.update = function() {
+			// clamp order within player list
+			this.order = clamp(this.order, 0, players.length-1);
+		
+			// kill player if off screen
+			if (this.position.y > canvas.height*2) {					
+				// remove this player from the list of players
+				console.log("Dead at " + this.order + "/" + players.length + " at y " + this.position.y);
+				
+				// slide ones behind this one forward
+				for (var i = 0; i < players.length; ++i) {
+					if (players[i].order > this.order)
+						--players[i].order;
+				};
+				
+				// delete this one
+				players.splice(players.indexOf(this), 1);
+			};
+			
+			// try to move towards where it should be in the running order
+			if (this.position.x != 275 - this.order*75) {
+				// only try to move if its above the terrain level
+				if (this.position.y + this.bounds.height <= canvas.height - TERRAIN_HEIGHT) {
+					// if it's close, round off
+					if (Math.abs(this.position.x - (275 - this.order*75)) <= 3) {
+						this.position.x = 275 - this.order*75
+					}
+					// otherwise, move towards where it should be
+					else {
+						this.position.x -= Math.sign(this.position.x - (275 - this.order*75))*3;
+					};
+				};
+					
+				// loop players and update game state if they're done switching
+				if (currentGameState == GAME_STATE.SWITCHING) {
+					var allSwitched = true;
+					for (var i = 0; i < players.length; ++i)
+						if (players[i].position.x != 275 - players[i].order*75)
+							allSwitched = false;
+							
+					if (allSwitched)
+						currentGameState = GAME_STATE.RUNNING;
+				};
+			};
+			
+			// update onGround variable
+			this.onGround = false;
+			
+			// update if they're on the ground
+			// loop through terrain objects
+			for (var i = 0; i < terrains.length; ++i) {
+				// get currently looped terrain object
+				var currentTerrain = terrains[i];
+				
+				// update onGround variable by comparing pos to each terrain object
+				if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.width > currentTerrain.position.x) {
+					if (this.position.y + this.bounds.height == currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS && this.velocity.y >= 0) {
+						this.onGround = true;
+						break;
+					}
+				}
+			};
+			
+			// if off ground, update physics and check if on ground
+			if (!this.onGround) {		
+				// update phsyics
+				this.velocity.y += GRAVITY
+					
+				// loop through velocity
+				for (var i = 0; i < Math.abs(this.velocity.y); ++i) {
+					// distance to move this loop - 1 each pixel, or the decimal
+					// remainder of velocity on the last loop
+					var moveDist = (Math.abs(this.velocity.y) - i < 1 ? Math.abs(this.velocity.y) - i : 1) * Math.sign(this.velocity.y);
+					
+					// variable to store if its safe to move
+					var positionSafe = true;
+					
+					// loop through terrain objects and check if we can move down
+					for (var ii = 0; ii < terrains.length; ++ii) {
+						// get currently looped terrain object
+						var currentTerrain = terrains[ii];
+						
+						// check is position we'd move to is safe (above terrain)
+						// terrain we're checking is below is
+						if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.width > currentTerrain.position.x) {
+							// terrain below us is solid ground and we'd be inside it if we moved down
+							if (this.position.y + this.bounds.height + moveDist > currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS) {
+								// it's not safe to move
+								positionSafe = false;
+								break;
+							};
+						};
+					};
+					
+					// if we're safe to move, shift down
+					if (positionSafe || this.position.y + this.bounds.height > currentTerrain.position.y) {
+						this.position.y += moveDist;
+					}
+					// otherwise, stick to the terrain
+					else {
+						this.velocity.y = 0;
+						this.position.y = canvas.height - TERRAIN_HEIGHT - this.bounds.height;
+						this.numJumps = 0;
+						this.onGround = true;
+						break;
+					};
+				}
+			}
+			else {
+				this.velocity.y = 0;
+				this.position.y = canvas.height - TERRAIN_HEIGHT - this.bounds.height;
+				this.numJumps = 0;
+			};
+				
+			// DRAW: draw the player
+			this.draw();
+		};
+	
+		// FUCNTION: main player draw call
+		this.draw = function() {
+			ctx.save();
+			switch (this.classType) {
+				case (PLAYER_CLASSES.MAGI):
+					ctx.fillStyle = this.color;
+					ctx.fillRect(this.position.x, this.position.y, this.bounds.width, this.bounds.height);
+					ctx.fill();
+					break;
+				default:
+					ctx.drawImage(this.classType.img, this.position.x, this.position.y);
+					break;
+			};
 			ctx.restore();
 		};
 	};
 	
+	// CLASS: enemy object
+	function Enemy(enemyType) {
+		/* VARIABLES */
+		this.enemyType = enemyType;		// what type of enemy this is
+		this.numJumps = 0;				// number of jumps they've done in current sequence
+		this.maxJumps = 2;				// max number of jumps they can do in sequence
+		this.onGround = true;			// whether the enemy is currently grounded
+		this.color = this.enemyType.color; // color enemy will draw at if they have no image
+		this.bounds = {
+			width: this.enemyType.width,
+			height: this.enemyType.height
+		};
+		this.position = {				// starting enemy position
+			x: canvas.width-this.bounds.width*5,
+			y: canvas.height-TERRAIN_HEIGHT-this.bounds.height*2
+		};
+		this.targetPos = {
+			x: canvas.width - this.bounds.width*1.5,
+			y: canvas.height-TERRAIN_HEIGHT-this.bounds.height
+		};
+		this.velocity = {				// starting enemy velocity
+			x: 0,
+			y: 0
+		};
+		
+		// MUTATOR: force enemy's position
+		this.setPosition = function(x, y) {
+			this.position = {
+				x: x,
+				y: y
+			};
+		};
+		// MUTATOR: force enemy's velocity
+		this.setVelocity = function(x, y) {
+			this.velocity = {
+				x: x,
+				y: y
+			};
+		};
+		// FUNCTION: prints enemy information to console
+		this.toString = function() {
+			console.log("Enemy " + this.enemyType + " is at x" + this.position.x + " y" + this.position.y);
+		};
+		// FUNCTION: force a jump
+		this.jump = function(speed, startingPush, force) {
+			// first check if they're on the ground
+			if (this.numJumps < this.maxJumps || force) {
+				++this.numJumps;
+			
+				// give the initial thrust
+				this.velocity.y = -speed;
+				this.position.y -= startingPush;
+				this.onGround = false;
+			};}.bind(this);
+		
+		// FUNCTION: main enemy object tick
+		this.update = function() {
+			// kill enemy if off screen
+			if (this.position.y > canvas.height*2) {
+				// delete this one
+				enemies.splice(enemies.indexOf(this), 1);
+			};
+			
+			// home towards target position
+			if (this.targetPos != undefined) {
+				// only homes left-right for now
+				// if it's close, snap to its homing position
+				if (Math.abs(this.position.x - this.targetPos.x) <= 3) {
+					this.position.x = this.targetPos.x;
+					this.targetPos = undefined;
+				}
+				// otherwise, move towards where it should be
+				else {
+					this.position.x -= Math.sign(this.position.x - this.targetPos.x)*5;
+				};
+			};
+			
+			// update onGround variable
+			this.onGround = false;
+			
+			// update if they're on the ground
+			// loop through terrain objects
+			for (var i = 0; i < terrains.length; ++i) {
+				// get currently looped terrain object
+				var currentTerrain = terrains[i];
+				
+				// update onGround variable by comparing pos to each terrain object
+				if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.width > currentTerrain.position.x) {
+					if (this.position.y + this.bounds.height == currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS && this.velocity.y >= 0) {
+						this.onGround = true;
+						break;
+					}
+				}
+			};
+			
+			// if off ground, update physics and check if on ground
+			if (!this.onGround) {
+				// attempt to jump if it falls below the terrain line
+				if (this.position.y + this.bounds.height >= canvas.height - TERRAIN_HEIGHT)
+					this.jump(15, 1);
+			
+				// update phsyics
+				this.velocity.y += GRAVITY
+					
+				// loop through velocity
+				for (var i = 0; i < Math.abs(this.velocity.y); ++i) {
+					// distance to move this loop - 1 each pixel, or the decimal
+					// remainder of velocity on the last loop
+					var moveDist = (Math.abs(this.velocity.y) - i < 1 ? Math.abs(this.velocity.y) - i : 1) * Math.sign(this.velocity.y);
+					
+					// variable to store if its safe to move
+					var positionSafe = true;
+					
+					// loop through terrain objects and check if we can move down
+					for (var ii = 0; ii < terrains.length; ++ii) {
+						// get currently looped terrain object
+						var currentTerrain = terrains[ii];
+						
+						// check is position we'd move to is safe (above terrain)
+						// terrain we're checking is below is
+						if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.width > currentTerrain.position.x) {
+							// terrain below us is solid ground and we'd be inside it if we moved down
+							if (this.position.y + this.bounds.height + moveDist > currentTerrain.position.y && currentTerrain.terrainType == TERRAIN_TYPE.GRASS) {
+								// it's not safe to move
+								positionSafe = false;
+								break;
+							};
+						};
+					};
+					
+					// if we're safe to move, shift down
+					if (positionSafe || this.position.y + this.bounds.height > currentTerrain.position.y) {
+						this.position.y += moveDist;
+					}
+					// otherwise, stick to the terrain
+					else {
+						this.velocity.y = 0;
+						this.position.y = canvas.height - TERRAIN_HEIGHT - this.bounds.height;
+						this.numJumps = 0;
+						this.onGround = true;
+						break;
+					};
+				}
+			}
+			else {
+				this.velocity.y = 0;
+				this.position.y = canvas.height - TERRAIN_HEIGHT - this.bounds.height;
+				this.numJumps = 0;
+			};
+				
+			// DRAW: draw the enemy
+			this.draw();
+		};
+	
+		// FUCNTION: main enemy draw call
+		this.draw = function() {
+			ctx.save();
+			ctx.fillStyle = this.color;
+			ctx.fillRect(this.position.x, this.position.y, this.bounds.width, this.bounds.height);
+			ctx.fill();
+			ctx.restore();
+		};
+	};
+ 
 	// PAUSE FUNCTION: pauses the game
 	function pauseGame() {
-		paused = true;
-		
-		// stop the animation loop if the player is alive
-		if (this.currentGameState == GAME_STATE.RUNNING)
-			cancelAnimationFrame(animationID);
-		
-		// draw the pause screen
-		ctx.save();
-		ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-		ctx.fillRect(0, 0, canvas.width, canvas.height);
-		fillText(ctx, "Paused", canvas.width/2, canvas.height/2, "30pt Calibri", "white");
-		ctx.restore();
+		// since pause can be called multiple ways
+		// prevents multiple redraws of pause screen
+		if (!paused) {
+			paused = true;
+			
+			// stop the animation loop if the player is alive
+			if (currentGameState == GAME_STATE.RUNNING)
+				cancelAnimationFrame(animationID);
+			
+			// draw the pause screen
+			ctx.save();
+			ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			fillText(ctx, "Paused", canvas.width/2, canvas.height/2, "30pt Calibri", "white");
+			ctx.restore();
+		};
 	};
 	
 	// RESUME FUNCTION: resumes the game
@@ -510,46 +973,45 @@ game.engine = (function(){
 		
 		// forcibly end animation loop in case it's running
 		// only end the loop if the player is alive
-		if (this.currentGameState == GAME_STATE.RUNNING) {
+		if (currentGameState == GAME_STATE.RUNNING) {
 			cancelAnimationFrame(animationID);
 			// resume ticking
 			update();
 		}
 	};
 	
-	// HELPER: get mouse coordinates on canvas
-	function getMouse(e) {
-		mouseX = e.pageX - e.target.offsetLeft;
-		mouseY = e.pageY - e.target.offsetTop;
-	};
-	
-	 // activates full screen
-	function requestFullscreen(element) {
-		if (element.requestFullscreen) {
-		  element.requestFullscreen();
-		} else if (element.mozRequestFullscreen) {
-		  element.mozRequestFullscreen();
-		} else if (element.mozRequestFullScreen) {
-		  element.mozRequestFullScreen();
-		} else if (element.webkitRequestFullscreen) {
-		  element.webkitRequestFullscreen();
-		};
-		// no response if unsupported
-	};
-	
 	// FUNCTION: do things based on key presses
 	function keyPress(e) {
 		keys[e.keyCode] = true;
+		
 		// spacebar - jump!
 		if (e.keyCode == KEY.SPACE) {
 			// loop players and jump after a delay based on party order
 			for (var i = 0; i < players.length; ++i) {
-				setTimeout(players[i].jump, players[i].order*jumpFunction(), 15, 1);
+				setTimeout(players[i].jump, players[i].order*jumpFunction(), 15, 1, false);
 				globalLastTerrain = terrains[terrains.length-1];
 			};
 			
 			// prevent spacebar page scrolling
 			e.preventDefault();
+		};
+		
+		// q - make first player trigger Q ability
+		if (e.keyCode == KEY.Q) {
+			// loop players and only initiate ability on one at order 0
+			for (var i = 0; i < players.length; ++i) {
+				if (players[i].order == 0)
+					players[i].baseAttack();
+			};
+		};
+		
+		// p - toggle game paused
+		if (e.keyCode == KEY.P) {
+			// check if paused, and toggle it
+			if (paused)
+				resumeGame();
+			else
+				pauseGame();
 		};
 	};
 	
