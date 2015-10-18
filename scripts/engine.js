@@ -16,9 +16,11 @@ game.engine = (function(){
 	var animationID;			// stores animation ID of animation frame
 	var paused = false;			// if the game is paused
 	var mouseDown = false;		// if the mouse is being held down
+	var time = 0;
 	
 	// ASSETS
-	var grassImg = new Image();
+	var background = new Image();
+	var baseImg = new Image();
 	var lavaImg = new Image();
 	
 	// GAME VARIABLES
@@ -26,6 +28,10 @@ game.engine = (function(){
 	var globalGameSpeed;		// current speed of the game, mainly used for faster terrain
 	var KEY = {					// "enum" equating keycodes to names (e.g. keycode 32 = spacebar)
 		SPACE: 32,
+		LEFT: 37,
+		UP: 38,
+		RIGHT: 39,
+		DOWN: 40,
 		A: 65,
 		D: 68,
 		E: 69,
@@ -51,7 +57,7 @@ game.engine = (function(){
 	var TERRAIN_HEIGHT = 100;	// height of each terrain object, how high from the bottom it goes
 	var terrains = [];			// array to hold terrain objects
 	var TERRAIN_TYPE = {		// "enum" of terrain types
-		GRASS: 0,
+		BASE: 0,
 		VOID: 1,
 		LAVA: 2
 	};
@@ -225,7 +231,7 @@ game.engine = (function(){
 		
 		// SETUP: game
 		globalGameSpeed = 8;
-		currentTerrainType = TERRAIN_TYPE.GRASS;
+		currentTerrainType = TERRAIN_TYPE.BASE;
 		// generate initial terrain
 		for (var i = 0; i < Math.floor(canvas.width*1.5/TERRAIN_WIDTH); ++i) {
 			terrains[i] = new Terrain(i*TERRAIN_WIDTH);
@@ -245,7 +251,8 @@ game.engine = (function(){
 	
 	// Load game assets (images and sounds)
 	function loadAssets() {
-		grassImg.src = "assets/grass.png";
+		background.src = "assets/Wall720.png";
+		baseImg.src = "assets/TileSandstone100.png";
 		lavaImg.src = "assets/lava.png";
 		PLAYER_CLASSES.PALADIN.img.src = "assets/paladin.png";
 		PLAYER_CLASSES.RANGER.img.src = "assets/ranger.png";
@@ -264,6 +271,7 @@ game.engine = (function(){
 	function update() {
 		// scedule next draw frame
 		animationID = requestAnimationFrame(update);
+		++time;
 		
 		// start game if on start screen and space or start is being pressed
 		if (currentGameState === GAME_STATE.START) {
@@ -296,8 +304,35 @@ game.engine = (function(){
 		if (players.length == 0)
 			currentGameState = GAME_STATE.DEAD;
 		
+		// Switch party order with left or right arrow keys
+		// loop and cycle if they aren't switching already
+		if (currentGameState == GAME_STATE.RUNNING) {
+			for (var i = 0; i < players.length; ++i) {
+				// only cycle living players
+				if (players[i].deathTime == 0) {
+					// left click - cycle left
+					if (keys[KEY.LEFT]) {
+						players[i].cycleOrder(1);
+						currentGameState = GAME_STATE.SWITCHING;
+					}
+					// right click - cycle right
+					else
+					if (keys[KEY.RIGHT]) {
+						players[i].cycleOrder(-1);			
+						// players are now switching positions
+						currentGameState = GAME_STATE.SWITCHING;
+					}
+				}
+			};
+		};
+		
 		// clear the screen
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		
+		// draw the parallax background
+		for (var i = -(time*3 % 500); i < canvas.width; i += 500) {
+			ctx.drawImage(background, i, 0);
+		}
 		
 		// update players
 		var numDead = 0;
@@ -366,7 +401,7 @@ game.engine = (function(){
 				// speed up the game very slightly for each passed terrain
 				globalGameSpeed = Math.min(15, globalGameSpeed+0.02);
 				// add 1 point for each passed terrain if the game is running
-				if (currentGameState == GAME_STATE.RUNNING)
+				if (currentGameState == GAME_STATE.RUNNING || currentGameState == GAME_STATE.SWITCHING)
 					++score;
 			}
 		}
@@ -381,10 +416,10 @@ game.engine = (function(){
 			
 			// check if we've reached the end of this terrain type
 			if (terrainCount <= 0) {
-				// force grass to generate after each other terrain type
-				if (currentTerrainType != TERRAIN_TYPE.GRASS) {
-					currentTerrainType = TERRAIN_TYPE.GRASS;
-					// grass patches get shorter as game speeds up
+				// force base ground to generate after each other terrain type
+				if (currentTerrainType != TERRAIN_TYPE.BASE) {
+					currentTerrainType = TERRAIN_TYPE.BASE;
+					// ground patches get shorter as game speeds up
 					terrainCount = Math.max(3, 15 - globalGameSpeed);
 				}
 				// otherwise, generate another "danger terrain"
@@ -426,10 +461,10 @@ game.engine = (function(){
 	function Terrain(startX) {		
 		/* VARIABLES */
 		// starting terrain position
-		this.position = {
-			x: startX,
-			y: canvas.height-TERRAIN_HEIGHT
-		};
+		this.position = new Victor(
+			startX,
+			canvas.height-TERRAIN_HEIGHT
+		);
 		// terrain's type is global type at time of its spawn 
 		this.terrainType = currentTerrainType;
 		// if the terrain has been iced by the wizard's spell - acts as solid
@@ -442,7 +477,7 @@ game.engine = (function(){
 		
 		// FUNCTION: returns if the terrain is solid
 		this.isSolid = function() {
-			return this.terrainType === TERRAIN_TYPE.GRASS || this.iced;
+			return this.terrainType === TERRAIN_TYPE.BASE || this.iced;
 		}
 		
 		// FUNCTION: update terrain position, draw it
@@ -479,9 +514,9 @@ game.engine = (function(){
 				// void, do nothing
 				case TERRAIN_TYPE.VOID:
 					break;
-				// grassy terrain
-				case TERRAIN_TYPE.GRASS:
-					ctx.drawImage(grassImg, this.position.x, this.position.y);
+				// base terrain
+				case TERRAIN_TYPE.BASE:
+					ctx.drawImage(baseImg, this.position.x, this.position.y);
 					//ctx.fillStyle = "green";
 					//ctx.fillRect(this.position.x, this.position.y, TERRAIN_WIDTH+1, TERRAIN_HEIGHT);
 					//ctx.fill();
@@ -521,28 +556,23 @@ game.engine = (function(){
 			width: this.classType.width,
 			height: this.classType.height
 		};
-		this.position = {				// starting player position
-			x: 275 - players.length*75,
-			y: canvas.height-TERRAIN_HEIGHT-this.bounds.height-250
-		};
-		this.velocity = {				// starting player velocity
-			x: 0,
-			y: 0
-		};
+		this.position = new Victor(		// starting player position
+			275 - players.length*75,
+			canvas.height-TERRAIN_HEIGHT-this.bounds.height-250
+		);
+		this.velocity = new Victor(		// starting player velocity
+			0,
+			0
+		);
 		
 		// MUTATOR: force player's position, within bounds of canvas
 		this.setPosition = function(x, y) {
-			this.position = {
-				x: clamp(x, 0, canvas.width),
-				y: clamp(y, 0, canvas.height)
-			};
+			this.position.x = clamp(x, 0, canvas.width);
+			this.postiion.y = clamp(y, 0, canvas.height);
 		};
 		// MUTATOR: force player's velocity
 		this.setVelocity = function(x, y) {
-			this.velocity = {
-				x: x,
-				y: y
-			};
+			this.velocity = new Victor(x, y);
 		};
 		// FUNCTION: cycle order by a number
 		// can be negative to cycle right
@@ -557,7 +587,7 @@ game.engine = (function(){
 		};
 		// FUNCTION: prints player information to console
 		this.toString = function() {
-			console.log("Player in position " + this.order + " is at x" + this.position.x + " y" + this.position.y);
+			console.log("Player in position " + this.order + " is at " + this.position.toString());
 		};
 		// FUNCTION: force a jump
 		this.jump = function(speed, startingPush, force) {
@@ -699,7 +729,6 @@ game.engine = (function(){
 			// DRAW: draw the player
 			this.draw();
 		};
-	
 		// FUCNTION: main player draw call
 		this.draw = function() {
 			ctx.save();
@@ -778,16 +807,16 @@ game.engine = (function(){
 			height: this.projType.height
 		};
 		// starting projectile position
-		this.position = {
-			x: x,
-			y: y
-		};
+		this.position = new Victor(
+			x,
+			y
+		);
 		// starting projectile velocity
 		// directs itself towards the "towards" object passed in
-		this.velocity = {
-			x: (towards.position.x - this.position.x)/(30 - this.projType.velocity),
-			y: (towards.position.y - this.position.y)/(30 - this.projType.velocity)
-		};
+		this.velocity = new Victor(
+			((towards.position.x == undefined ? 0 : towards.position.x) - this.position.x)/(30 - this.projType.velocity),
+			((towards.position.y == undefined ? 0 : towards.position.y) - this.position.y)/(30 - this.projType.velocity)
+		);
 		
 		// give an upwards thrust if it's affected by gravity
 		if (this.gravity)
@@ -795,17 +824,11 @@ game.engine = (function(){
 		
 		// MUTATOR: force player's position, within bounds of canvas
 		this.setPosition = function(x, y) {
-			this.position = {
-				x: x,
-				y: y
-			};
+			this.position = new Victor(x, y);
 		};
 		// MUTATOR: force player's velocity
 		this.setVelocity = function(x, y) {
-			this.velocity = {
-				x: x,
-				y: y
-			};
+			this.velocity = new Victor(x, y);
 		};
 		
 		// FUNCTION: main player object tick
@@ -886,10 +909,8 @@ game.engine = (function(){
 					if (players[i].qCooldown > 0 && players[i].classType === PLAYER_CLASSES.PALADIN && players[i].deathTime == 0)
 						// check for collisions with the shield box
 						if (this.position.x < firstPlayer.position.x + firstPlayer.bounds.width + 25 && this.position.x + this.bounds.width > firstPlayer.position.x) {
-							console.log("X match");
 							// overlap detected
 							if (this.position.y + this.bounds.height > players[i].position.y && this.position.y < players[i].position.y + players[i].bounds.height) {
-								console.log("Hit shield");
 								// bounce
 								this.velocity.x *= -1;
 								// now is a player projectile
@@ -938,36 +959,30 @@ game.engine = (function(){
 			width: this.enemyType.width,
 			height: this.enemyType.height
 		};
-		this.position = {				// starting enemy position
-			x: canvas.width+25,
-			y: canvas.height-TERRAIN_HEIGHT-this.bounds.height*2
-		};
-		this.targetPos = {
-			x: canvas.width - this.bounds.width*1.5,
-			y: canvas.height-TERRAIN_HEIGHT-this.bounds.height
-		};
-		this.velocity = {				// starting enemy velocity
-			x: 0,
-			y: 0
-		};
+		this.position = new Victor(		// starting enemy position
+			canvas.width+25,
+			canvas.height-TERRAIN_HEIGHT-this.bounds.height*2
+		);
+		this.targetPos = new Victor(	// the location the enemy is homing towards
+			canvas.width - this.bounds.width*1.5,
+			canvas.height-TERRAIN_HEIGHT-this.bounds.height
+		);
+		this.velocity = new Victor(		// starting enemy velocity
+			0,
+			0
+		);
 		
 		// MUTATOR: force enemy's position
 		this.setPosition = function(x, y) {
-			this.position = {
-				x: x,
-				y: y
-			};
+			this.position = new Victor(x, y);
 		};
 		// MUTATOR: force enemy's velocity
 		this.setVelocity = function(x, y) {
-			this.velocity = {
-				x: x,
-				y: y
-			};
+			this.velocity = new Victor(x, y);
 		};
 		// FUNCTION: prints enemy information to console
 		this.toString = function() {
-			console.log("Enemy " + this.enemyType + " is at x" + this.position.x + " y" + this.position.y);
+			console.log("Enemy " + this.enemyType + " is at x" + this.position.toString());
 		};
 		// FUNCTION: force a jump
 		this.jump = function(speed, startingPush, force) {
@@ -1092,6 +1107,12 @@ game.engine = (function(){
 			ctx.save();
 			ctx.fillStyle = this.color;
 			ctx.fillRect(this.position.x, this.position.y, this.bounds.width, this.bounds.height);
+			
+			// draw health above head
+			ctx.fillStyle = "red";
+			ctx.fillRect(this.position.x+10, this.position.y - 10, this.bounds.width-20, 5);
+			ctx.fillStyle = "green";
+			ctx.fillRect(this.position.x+10, this.position.y - 10, (this.bounds.width-20) * (this.health/this.maxHealth), 5);
 			ctx.fill();
 			ctx.restore();
 		};
