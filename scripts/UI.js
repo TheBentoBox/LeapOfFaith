@@ -9,7 +9,7 @@ var UI = function(xPos, yPos, width, height) {
 	console.log("Loaded UI.js module.");
 
 	// grab context of engine
-	var ctx = game.engine.ctx;
+	var ctx = document.querySelector("canvas").getContext("2d");
 	
 	// base position of UI element
 	var position = {
@@ -82,9 +82,9 @@ var UI = function(xPos, yPos, width, height) {
 	
 	// FUNCTION: update and draw UI element
 	function updateAndDraw(){
-		if (isActive){	
+		if (isActive){
 			// fill color
-			if(fillColor != ""){
+			if (fillColor != ""){
 				ctx.fillStyle = fillColor;
 				ctx.fillRect(position.x, position.y, size.x, size.y);
 			}
@@ -130,7 +130,7 @@ var UI = function(xPos, yPos, width, height) {
 		};
 		
 		this.fillColor = "gray";		// background fill color
-		this.image = "";				// background image
+		this.image = new Image();		// background image
 		this.isActive = false; 			// if the element is active and displayed
 		
 		// text on button
@@ -144,24 +144,24 @@ var UI = function(xPos, yPos, width, height) {
 		this.onHover = undefined;		// event to fire on hover
 		
 		// FUNCTION: update and draw button if active
-		function updateAndDraw() {
+		this.updateAndDraw = function() {
 			if (this.isActive){		
 				// fill color
 				if(this.fillColor != ""){
 					ctx.fillStyle = this.fillColor;
-					ctx.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
+					ctx.fillRect(this.offset.x, this.offset.y, this.size.x, this.size.y);
 				}
 				
 				// stroke border
 				if(this.border.color != ""){
 					ctx.strokeStyle = this.border.color;
 					ctx.lineWidth = this.border.width;
-					ctx.strokeRect(this.position.x, this.position.y, this.size.x, this.size.y);
+					ctx.strokeRect(this.offset.x, this.offset.y, this.size.x, this.size.y);
 				}
 				
 				// draw image
 				if(this.image.src != ""){
-					ctx.drawImage(this.image, this.position.x, this.position.y);
+					ctx.drawImage(this.image, this.offset.x, this.offset.y);
 				}
 				
 				// print text
@@ -170,8 +170,6 @@ var UI = function(xPos, yPos, width, height) {
 				}
 			}
 		}
-		
-		return this;
 	};
 	//{ BUTTON FUNCTIONS
 	// FUNCTION: make a new button
@@ -229,4 +227,26 @@ var UI = function(xPos, yPos, width, height) {
 		buttons.find(name).isActive = !buttons.find(name).isActive;
 	}
 	//} BUTTON FUNCTIONS
+	
+	return {
+		setPosition: setPosition,
+		setSize: setSize,
+		setBorder: setBorder,
+		setFill: setFill,
+		setImage: setImage,
+		toggleActive: toggleActive,
+		togglePause: togglePause,
+		makeButton: makeButton,
+		setButName: setButName,
+		setButOffset: setButOffset,
+		setButSize: setButSize,
+		setButBorder: setButBorder,
+		setButFill: setButFill,
+		setButImage: setButImage,
+		setButText: setButText,
+		setButClick: setButClick,
+		setButHover: setButHover,
+		toggleButActive: toggleButActive,
+		updateAndDraw: updateAndDraw
+	};
 };
