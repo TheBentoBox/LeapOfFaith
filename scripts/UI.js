@@ -1,4 +1,4 @@
-// UI.js
+// ui.js
 "use strict";
 // if game exists use the existing copy
 // else create a new object literal
@@ -6,10 +6,8 @@ var game = game || {};
 
 // CLASS: user interface object
 var UI = function(xPos, yPos, width, height) {
-	console.log("Loaded UI.js module.");
-
 	// grab context of engine
-	var ctx = document.querySelector("canvas").getContext("2d");
+	var ctx = game.engine.ctx;
 	
 	// base position of UI element
 	var position = new Victor(xPos,yPos,);
@@ -75,7 +73,7 @@ var UI = function(xPos, yPos, width, height) {
 	//} UI MODIFIERS
 	
 	// FUNCTION: update and draw UI element
-	function updateAndDraw(){
+	function updateAndDraw(trackers){
 		if (isActive){
 			// fill color
 			if (fillColor != ""){
@@ -138,7 +136,6 @@ var UI = function(xPos, yPos, width, height) {
 				if(this.fillColor != ""){
 					ctx.fillStyle = this.fillColor;
 					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
-
 				}
 				
 				// stroke border
@@ -216,4 +213,77 @@ var UI = function(xPos, yPos, width, height) {
 		buttons.find(name).isActive = !buttons.find(name).isActive;
 	}
 	//} BUTTON FUNCTIONS
+
+	// CLASS: status bar object
+	var bar = function(name, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin) {
+		// reference name
+		this.name = name;
+		
+		// offset from base UI element
+		this.offset = new Victor(offsetX, offsetY);
+		
+		// bar size
+		this.size = new Victor(width, height);
+		
+		// border styling
+		this.border = {
+			color: "",
+			width: 0,
+		};
+		
+		this.backColor = "gray";		// background fill color
+		this.foreColor = "green";		// foreground fill color
+		this.backImage = new Image();	// background image
+		this.foreImage = new Image();	// foreground image
+		this.isActive = false; 			// if the element is active and displayed
+		
+		// variable to be tracked by bar
+		this.target = {
+			value: tgtVar,
+			max: tgtMax,
+			min: tgtMin,
+		}
+		
+		// text on bar
+		this.text = {
+			string: "",
+			css: "",
+			color: "",
+		};
+		
+		// FUNCTION: update and draw bar if active
+		this.updateAndDraw = function() {
+			if (this.isActive){		
+				// fill background color
+				if(this.backColor != ""){
+					ctx.fillStyle = this.backColor;
+					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
+				}
+				
+				// stroke border
+				if(this.border.color != ""){
+					ctx.strokeStyle = this.border.color;
+					ctx.lineWidth = this.border.width;
+					ctx.strokeRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
+				}
+				
+				// fill foreground color
+				if(this.foreColor != ""){
+					ctx.fillStyle = this.foreColor;
+					percent = clamp(this.target.value / (this.target.max - this.target.min), 0.0, 1.0);
+					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
+				}
+				
+				// draw background image
+				if(this.backImage.src != ""){
+					ctx.drawImage(this.backImage, position.x + this.offset.x, position.y + this.offset.y);
+				}
+				
+				// print text
+				if(this.text.string != "") {
+					fillText(ctx, this.text.string, (postition.x + this.offset.x + this.size.x / 2), (position.y + this.offset.y + this.size.y / 2), this.text.css, this.text.color);
+				}
+			}
+		}
+	}
 };
