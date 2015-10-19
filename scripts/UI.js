@@ -12,16 +12,10 @@ var UI = function(xPos, yPos, width, height) {
 	var ctx = game.engine.ctx;
 	
 	// base position of UI element
-	var position = {
-		x: xPos,
-		y: yPos,
-	};
+	var position = new Victor(xPos,yPos,);
 	
 	// element size
-	var size = {
-		x: width,
-		y: height,
-	};
+	var size = new Victor(width, height);
 	
 	// border styling
 	var border = {
@@ -46,12 +40,12 @@ var UI = function(xPos, yPos, width, height) {
 	//{ UI MODIFIERS
 	// MUTATOR: set UI position
 	function setPosition(xPos, yPos){
-		position = {x:xPos, y:yPos};
+		position = new Victor(xPos,yPos,);
 	};
 	
 	// MUTATOR: set up bounding rectangle
 	function setSize(width, height){
-		size = {x:width, y:height};
+		size = new Victor(width, height);
 	};
 	
 	// MUTATOR: set border
@@ -112,16 +106,10 @@ var UI = function(xPos, yPos, width, height) {
 		this.name = name;
 		
 		// offset from base UI element
-		this.offset = {
-			x: offsetX,
-			y: offsetY,
-		};
+		this.offset = new Victor(offsetX, offsetY);
 		
 		// button size
-		this.size = {
-			x: width,
-			y: height,
-		};
+		this.size = new Victor(width, height);
 		
 		// border styling
 		this.border = {
@@ -149,24 +137,24 @@ var UI = function(xPos, yPos, width, height) {
 				// fill color
 				if(this.fillColor != ""){
 					ctx.fillStyle = this.fillColor;
-					ctx.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
+					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
 				}
 				
 				// stroke border
 				if(this.border.color != ""){
 					ctx.strokeStyle = this.border.color;
 					ctx.lineWidth = this.border.width;
-					ctx.strokeRect(this.position.x, this.position.y, this.size.x, this.size.y);
+					ctx.strokeRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
 				}
 				
 				// draw image
 				if(this.image.src != ""){
-					ctx.drawImage(this.image, this.position.x, this.position.y);
+					ctx.drawImage(this.image, position.x + this.offset.x, position.y + this.offset.y);
 				}
 				
 				// print text
 				if(this.text.string != "") {
-					fillText(ctx, this.text.string, (this.offset.x + this.size.x / 2), (this.offset.y + this.size.y / 2), this.text.css, this.text.color);
+					fillText(ctx, this.text.string, (postition.x + this.offset.x + this.size.x / 2), (position.y + this.offset.y + this.size.y / 2), this.text.css, this.text.color);
 				}
 			}
 		}
@@ -186,12 +174,12 @@ var UI = function(xPos, yPos, width, height) {
 	
 	// MUTATOR: set button offset
 	function setButOffset(name, xOffset, yOffset){
-		buttons.find(name).offset = {x:xOffset, y:yOffset};
+		buttons.find(name).offset = new Victor(offsetX, offsetY);
 	}
 	
 	// MUTATOR: set button size
 	function setButSize(name, width, height){
-		buttons.find(name).size = {x:width, y:height};
+		buttons.find(name).size = new Victor(width, height);
 	}
 	
 	// MUTATOR: set button border styling
