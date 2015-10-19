@@ -9,7 +9,7 @@ var UI = function(xPos, yPos, width, height) {
 	console.log("Loaded UI.js module.");
 
 	// grab context of engine
-	var ctx = game.engine.ctx;
+	var ctx = document.querySelector("canvas").getContext("2d");
 	
 	// base position of UI element
 	var position = new Victor(xPos,yPos,);
@@ -76,9 +76,9 @@ var UI = function(xPos, yPos, width, height) {
 	
 	// FUNCTION: update and draw UI element
 	function updateAndDraw(){
-		if (isActive){	
+		if (isActive){
 			// fill color
-			if(fillColor != ""){
+			if (fillColor != ""){
 				ctx.fillStyle = fillColor;
 				ctx.fillRect(position.x, position.y, size.x, size.y);
 			}
@@ -118,7 +118,7 @@ var UI = function(xPos, yPos, width, height) {
 		};
 		
 		this.fillColor = "gray";		// background fill color
-		this.image = "";				// background image
+		this.image = new Image();		// background image
 		this.isActive = false; 			// if the element is active and displayed
 		
 		// text on button
@@ -132,12 +132,13 @@ var UI = function(xPos, yPos, width, height) {
 		this.onHover = undefined;		// event to fire on hover
 		
 		// FUNCTION: update and draw button if active
-		function updateAndDraw() {
+		this.updateAndDraw = function() {
 			if (this.isActive){		
 				// fill color
 				if(this.fillColor != ""){
 					ctx.fillStyle = this.fillColor;
 					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
+
 				}
 				
 				// stroke border
@@ -158,8 +159,6 @@ var UI = function(xPos, yPos, width, height) {
 				}
 			}
 		}
-		
-		return this;
 	};
 	//{ BUTTON FUNCTIONS
 	// FUNCTION: make a new button

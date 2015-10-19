@@ -143,7 +143,7 @@ game.engine = (function(){
 	var GRAVITY = 0.98;			// global gravity
 	var jumpFunction = function() { return 1000/60*TERRAIN_WIDTH/globalGameSpeed; };
 	var globalLastTerrain = {};
-	
+	var newUI = undefined;
 	
 	
 	// Set up canvas and game variables
@@ -158,7 +158,6 @@ game.engine = (function(){
 		
 		// load default song and title, and play
 		playStream(audioElement);
-		
 		loadAssets();
 		
 		// taps working as jumps 
@@ -217,6 +216,14 @@ game.engine = (function(){
 		window.addEventListener("keydown", keyPress);
 		// callback for button presses
 		window.addEventListener("keyup", keyRelease);
+		
+		// create starting UI
+		//newUI = new UI(canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
+		//console.log(newUI);
+		//newUI.toggleActive();
+		//newUI.setFill("white");
+		//newUI.makeButton("Score", canvas.width/2 - 20, canvas.height/2 - 20, 40, 40, function() { game.engine.score += 50; });
+		//newUI.toggleButActive("Score");
 		
 		// BEGIN main game tick
 		update();
@@ -455,10 +462,62 @@ game.engine = (function(){
 			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
 			ctx.restore();
 		};
+	
+		// draw UI elements
+		newUI.updateAndDraw();
+	};
+	
+	// BASE CLASS: game object with physics and bounding box variables
+	function GameObject() {
+		// starting position of game object
+		this.position = new Victor(0, 0);
+		// bounding box width and height for game object
+		this.bounds = {
+			width: 0,
+			height: 0
+		};
+		
+		// MUTATOR: force object's position, within bounds of canvas
+		this.setPosition = function(x, y) {
+			this.position.x = clamp(x, 0, canvas.width);
+			this.postiion.y = clamp(y, 0, canvas.height);
+		};
+	};
+	
+	// BASE CLASS: game object that can move
+	function MobileObject() {
+		GameObject.call(this);
+	
+		// starting velocity of game object
+		this.velocity = new Victor(0, 0);
+		this.numJumps = 0;		// number of jumps the object has done in current sequence
+		this.maxJumps = 2;		// max number of jumps the object can do in sequence
+		this.onGround = true;	// whether the object is currently grounded
+		this.maxHealth = 0; 	// this object's max health
+		this.health = 0; 	// this object's current health
+		
+		// MUTATOR: force object's velocity
+		this.setVelocity = function(x, y) {
+			this.velocity = new Victor(x, y);
+		};
+		
+		// FUNCTION: force a jump
+		this.jump = function(speed, startingPush, force) {
+			// first check if they're on the ground
+			if (this.numJumps < this.maxJumps || force) {
+				++this.numJumps;
+			
+				// give the initial thrust
+				this.velocity.y = -speed;
+				this.position.y -= startingPush;
+				this.onGround = false;
+			};}.bind(this);
 	};
 	
 	// CLASS: terrain object
-	function Terrain(startX) {		
+	function Terrain(startX) {
+		GameObject.call(this);
+		
 		/* VARIABLES */
 		// starting terrain position
 		this.position = new Victor(
@@ -542,17 +601,17 @@ game.engine = (function(){
 	
 	// CLASS: player object
 	function Player(classType) {
+		MobileObject.call(this);
+	
 		/* VARIABLES */
 		this.classType = classType;		// player's class - Paladin, Ranger, or Magi
-		this.numJumps = 0;				// number of jumps they've done in current sequence
 		this.maxJumps = 2;				// max number of jumps they can do in sequence
 		this.order = players.length; 	// order in the party - defaults to last
-		this.onGround = true;			// whether the player is currently grounded
 		this.color = this.classType.color; // color player will draw at if they have no image
-		this.maxHealth = this.health = classType.health; // this player's health
+		this.maxHealth = this.health = classType.health; // this player's health and max health
 		this.qCooldown = -150;
 		this.deathTime = 0;
-		this.bounds = {
+		this.bounds = {					// the player's bounding width and height
 			width: this.classType.width,
 			height: this.classType.height
 		};
@@ -560,20 +619,7 @@ game.engine = (function(){
 			275 - players.length*75,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.height-250
 		);
-		this.velocity = new Victor(		// starting player velocity
-			0,
-			0
-		);
 		
-		// MUTATOR: force player's position, within bounds of canvas
-		this.setPosition = function(x, y) {
-			this.position.x = clamp(x, 0, canvas.width);
-			this.postiion.y = clamp(y, 0, canvas.height);
-		};
-		// MUTATOR: force player's velocity
-		this.setVelocity = function(x, y) {
-			this.velocity = new Victor(x, y);
-		};
 		// FUNCTION: cycle order by a number
 		// can be negative to cycle right
 		this.cycleOrder = function(num) {
@@ -589,17 +635,6 @@ game.engine = (function(){
 		this.toString = function() {
 			console.log("Player in position " + this.order + " is at " + this.position.toString());
 		};
-		// FUNCTION: force a jump
-		this.jump = function(speed, startingPush, force) {
-			// first check if they're on the ground
-			if (this.numJumps < this.maxJumps || force) {
-				++this.numJumps;
-			
-				// give the initial thrust
-				this.velocity.y = -speed;
-				this.position.y -= startingPush;
-				this.onGround = false;
-			};}.bind(this);
 		
 		// FUNCTION: main player object tick
 		this.update = function() {		
@@ -797,6 +832,8 @@ game.engine = (function(){
  
 	// CLASS: projectile
 	function Projectile(x, y, towards, projType, enemy) {
+		MobileObject.call(this);
+		
 		// type of projectile
 		this.projType = projType;
 		this.enemyProj = enemy; // whether an enemy fired it (only hits players)
@@ -821,15 +858,6 @@ game.engine = (function(){
 		// give an upwards thrust if it's affected by gravity
 		if (this.gravity)
 			this.velocity.y -= 15;
-		
-		// MUTATOR: force player's position, within bounds of canvas
-		this.setPosition = function(x, y) {
-			this.position = new Victor(x, y);
-		};
-		// MUTATOR: force player's velocity
-		this.setVelocity = function(x, y) {
-			this.velocity = new Victor(x, y);
-		};
 		
 		// FUNCTION: main player object tick
 		this.update = function() {		
@@ -948,11 +976,11 @@ game.engine = (function(){
 	
 	// CLASS: enemy object
 	function Enemy(enemyType) {
+		MobileObject.call(this);
+		
 		/* VARIABLES */
 		this.enemyType = enemyType;		// what type of enemy this is
-		this.numJumps = 0;				// number of jumps they've done in current sequence
 		this.maxJumps = 3;				// max number of jumps they can do in sequence
-		this.onGround = true;			// whether the enemy is currently grounded
 		this.color = this.enemyType.color; // color enemy will draw at if they have no image
 		this.health = this.maxHealth = this.enemyType.health; // get health and max health of this enemy type
 		this.bounds = {
@@ -967,34 +995,11 @@ game.engine = (function(){
 			canvas.width - this.bounds.width*1.5,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.height
 		);
-		this.velocity = new Victor(		// starting enemy velocity
-			0,
-			0
-		);
 		
-		// MUTATOR: force enemy's position
-		this.setPosition = function(x, y) {
-			this.position = new Victor(x, y);
-		};
-		// MUTATOR: force enemy's velocity
-		this.setVelocity = function(x, y) {
-			this.velocity = new Victor(x, y);
-		};
 		// FUNCTION: prints enemy information to console
 		this.toString = function() {
 			console.log("Enemy " + this.enemyType + " is at x" + this.position.toString());
 		};
-		// FUNCTION: force a jump
-		this.jump = function(speed, startingPush, force) {
-			// first check if they're on the ground
-			if (this.numJumps < this.maxJumps || force) {
-				++this.numJumps;
-			
-				// give the initial thrust
-				this.velocity.y = -speed;
-				this.position.y -= startingPush;
-				this.onGround = false;
-			};}.bind(this);
 		
 		// FUNCTION: main enemy object tick
 		this.update = function() {
