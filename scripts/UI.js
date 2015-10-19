@@ -93,8 +93,23 @@ var UI = function(xPos, yPos, width, height) {
 				ctx.drawImage(image, position.x, position.y);
 			}
 			
+			// update tracked variables
+			for(var i=0; i < trackers.length; i++){
+				var b = bars.find(trackers[i].name);
+				if(b != null){
+					b.target.value = trackers[i].value;
+				}
+			}
+			
 			// update and draw buttons
-			for(var i=0; i < buttons.length; i++) buttons[i].updateAndDraw();	
+			for(var i=0; i < buttons.length; i++){
+				buttons[i].updateAndDraw()
+			}
+			
+			// update and draw bars
+			for(var i=0; i < bars.length; i++){
+				bars[i].updateAndDraw()
+			}
 		}		
 	};
 	
@@ -254,6 +269,9 @@ var UI = function(xPos, yPos, width, height) {
 		// FUNCTION: update and draw bar if active
 		this.updateAndDraw = function() {
 			if (this.isActive){		
+				// percent fill of bar
+				percent = clamp(this.target.value / (this.target.max - this.target.min), 0.0, 1.0);
+				
 				// fill background color
 				if(this.backColor != ""){
 					ctx.fillStyle = this.backColor;
@@ -270,7 +288,6 @@ var UI = function(xPos, yPos, width, height) {
 				// fill foreground color
 				if(this.foreColor != ""){
 					ctx.fillStyle = this.foreColor;
-					percent = clamp(this.target.value / (this.target.max - this.target.min), 0.0, 1.0);
 					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
 				}
 				
@@ -279,6 +296,10 @@ var UI = function(xPos, yPos, width, height) {
 					ctx.drawImage(this.backImage, position.x + this.offset.x, position.y + this.offset.y);
 				}
 				
+				// draw foreground image
+				if(this.foreImage.src != ""){
+					ctx.drawImage(this.foreImage, 0, 0, this.size.x * percent, this.size.y, position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
+				}
 				// print text
 				if(this.text.string != "") {
 					fillText(ctx, this.text.string, (postition.x + this.offset.x + this.size.x / 2), (position.y + this.offset.y + this.size.y / 2), this.text.css, this.text.color);
