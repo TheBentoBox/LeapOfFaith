@@ -246,10 +246,18 @@ var UI = function(xPos, yPos, width, height) {
 			width: 0,
 		};
 		
-		this.backColor = "gray";		// background fill color
-		this.foreColor = "green";		// foreground fill color
-		this.backImage = new Image();	// background image
-		this.foreImage = new Image();	// foreground image
+		// fill colors
+		this.color = {
+			back: "gray",
+			fore: "green",
+		}
+		
+		// fill images
+		this.image = {
+			back = new Image();
+			fore = new Image();
+		}
+		
 		this.isActive = false; 			// if the element is active and displayed
 		
 		// variable to be tracked by bar
@@ -274,7 +282,7 @@ var UI = function(xPos, yPos, width, height) {
 				
 				// fill background color
 				if(this.backColor != ""){
-					ctx.fillStyle = this.backColor;
+					ctx.fillStyle = this.color.back;
 					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
 				}
 				
@@ -287,18 +295,18 @@ var UI = function(xPos, yPos, width, height) {
 				
 				// fill foreground color
 				if(this.foreColor != ""){
-					ctx.fillStyle = this.foreColor;
+					ctx.fillStyle = this.color.fore;
 					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
 				}
 				
 				// draw background image
-				if(this.backImage.src != ""){
-					ctx.drawImage(this.backImage, position.x + this.offset.x, position.y + this.offset.y);
+				if(this.image.back.src != ""){
+					ctx.drawImage(this.image.back, position.x + this.offset.x, position.y + this.offset.y);
 				}
 				
 				// draw foreground image
-				if(this.foreImage.src != ""){
-					ctx.drawImage(this.foreImage, 0, 0, this.size.x * percent, this.size.y, position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
+				if(this.image.fore.src != ""){
+					ctx.drawImage(this.image.fore, 0, 0, this.size.x * percent, this.size.y, position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
 				}
 				// print text
 				if(this.text.string != "") {
@@ -307,4 +315,57 @@ var UI = function(xPos, yPos, width, height) {
 			}
 		}
 	}
+	//{ BAR FUNCTIONS
+	// FUNCTION: make a new bar
+	function makeBar(name, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin) {
+		bars.push(new button(name, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin));
+	}
+	
+	// MUTATOR: set button name
+	function setBarName(name, newName){
+		bars.find(name).name = newName;
+	}
+	
+	// MUTATOR: set button offset
+	function setBarOffset(name, xOffset, yOffset){
+		bars.find(name).offset = new Victor(offsetX, offsetY);
+	}
+	
+	// MUTATOR: set button size
+	function setBarSize(name, width, height){
+		bars.find(name).size = new Victor(width, height);
+	}
+	
+	// MUTATOR: set button border styling
+	function setBarBorder(name, color, width){
+		bars.find(name).border = {color:color, width:width};
+	}
+	
+	// MUTATOR: set button color
+	function setBarFill(name, backColor, foreColor){
+		bars.find(name).color = {back: backColor, fore: foreColor};
+	}
+	
+	// MUTATOR: set button image
+	function setBarImage(name, backSource, foreSource){
+		img = bars.find(name).image;
+		img.back.src = backSource;
+		img.fore.src = foreSource;
+	}
+	
+	// MUTATOR: set button text
+	function setBarText(name, string, css, color){
+		bars.find(name).text = {string:string, css:css, color:color};
+	}
+	
+	// MUTATOR: set bar target
+	function setBarTarget(name, tgtVar, tgtMax, tgtMin){
+		bars.find(name).target = {value: tgtVar, max: tgtMax, min: tgtMin};
+	}
+	
+	// FUNCTION: toggle whether button is active
+	function toggleBarActive(name){
+		bars.find(name).isActive = !buttons.find(name).isActive;
+	}
+	//} BAR FUNCTIONS
 };
