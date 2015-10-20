@@ -244,12 +244,33 @@ game.engine = (function(){
 		window.addEventListener("keyup", keyRelease);
 		
 		// create starting UI
-		//newUI = new UI(canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
-		//console.log(newUI);
-		//newUI.toggleActive();
-		//newUI.setFill("white");
-		//newUI.makeButton("Score", canvas.width/2 - 20, canvas.height/2 - 20, 40, 40, function() { game.engine.score += 50; });
-		//newUI.toggleButActive("Score");
+		// HUD box for current abilities
+		game.windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
+		// set ability box to sandstone colors
+		game.windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
+		game.windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
+		game.windowManager.toggleUI("abilityHUD");
+		// ability buttons
+		var qKey = {keyCode: KEY.Q};
+		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(qKey){game.engine.keyPress(qKey);});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.toggleButton("abilityHUD", "ability1");
+		
+		var wKey = {keyCode: KEY.W};
+		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(wKey){game.engine.keyPress(wKey);});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.toggleButton("abilityHUD", "ability2");
+		
+		var eKey = {keyCode: KEY.E};
+		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress(eKey);});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.toggleButton("abilityHUD", "ability3");
 		
 		// BEGIN main game tick
 		update();
@@ -466,6 +487,11 @@ game.engine = (function(){
 				}
 			}
 		};
+		
+		// draw HUD
+		if(currentGameState != GAME_STATE.DEAD) {
+			game.windowManager.updateAndDraw([]);
+		}
 		
 		// draw score in upper right
 		if (currentGameState != GAME_STATE.DEAD) {
