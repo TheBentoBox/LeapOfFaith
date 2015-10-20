@@ -6,6 +6,8 @@ var game = game || {};
 
 window.onload = function(){
 	console.log("Loading game...");
+	game.windowManager.init();
+	game.engine.windowManager = game.windowManager;
 	game.engine.init();
 };
 
