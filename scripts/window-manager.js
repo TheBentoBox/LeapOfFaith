@@ -6,9 +6,8 @@ var game = game || {};
 
 game.windowManager = (function(){
 	console.log("Loaded window-manager.js module");
-	
-	var canvas = document.querySelector("canvas");	// reference to game's canvas
-	var ctx = canvas.getContext("2d");				// 2D canvas context
+	var canvas;  // reference to game's canvas
+	var ctx;     // 2D canvas context
 	
 	var uiElements = [];			// UI elements on the screen
 	// FUNCTION: find named object in array
@@ -18,11 +17,21 @@ game.windowManager = (function(){
 		};
 	};
 	
-	canvas.onclick = checkMouse;	// click event to check mouse on UI
-	canvas.touchstart = checkMouse;	// tap event to check touch on UI
+	// FUNCTION: initalize canvas variables for window manager
+	function init() {
+		canvas = document.querySelector("canvas");	
+		ctx = canvas.getContext("2d");				
+		
+		canvas.addEventListener("click", checkMouse);		// click event to check mouse on UI
+		canvas.addEventListener("touchstart", checkMouse);	// tap event to check touch on UI
+		
+		updateAndDraw();
+	}
 	
 	// FUNCTION: update and draw window
 	function updateAndDraw(trackers){
+		requestAnimationFrame(updateAndDraw);
+		
 		for(var i=0; i < uiElements.length; i++){
 			uiElements[i].updateAndDraw(trackers);
 		}
@@ -181,7 +190,7 @@ game.windowManager = (function(){
 		this.name = name;
 		
 		// base position of UI element
-		this.position = new Victor(xPos,yPos,);
+		this.position = new Victor(xPos, yPos);
 		
 		// element size
 		this.size = new Victor(width, height);
@@ -214,7 +223,7 @@ game.windowManager = (function(){
 		
 		// MUTATOR: set UI position
 		this.setPosition = function(xPos, yPos){
-			position = new Victor(xPos,yPos,);
+			position = new Victor(xPos, yPos);
 		};
 		
 		// MUTATOR: set up bounding rectangle
@@ -426,8 +435,8 @@ game.windowManager = (function(){
 			
 			// fill images
 			this.image = {
-				back = new Image();
-				fore = new Image();
+				back: new Image(),
+				fore: new Image()
 			}
 			
 			this.isActive = false; 			// if the element is active and displayed
@@ -536,4 +545,18 @@ game.windowManager = (function(){
 			//} BAR FUNCTIONS
 		}
 	};
+
+	return {
+		init: init,
+		makeUI: makeUI,
+		makeButton: makeButton,
+		makeBar: makeBar,
+		modifyUI: modifyUI,
+		toggleUI: toggleUI,
+		toggleUIPausing: toggleUIPausing,
+		modifyButton: modifyButton,
+		toggleButton: toggleButton,
+		modifyBar: modifyBar,
+		toggleBar: toggleBar
+	}
 }());

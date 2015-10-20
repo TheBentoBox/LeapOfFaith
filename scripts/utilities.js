@@ -2,9 +2,8 @@
 
 // get mouse pos on canvas
 function getMouse(e){
-	var mouse = {}
-	mouse.x = e.pageX - e.target.offsetLeft;
-	mouse.y = e.pageY - e.target.offsetTop;
+	var mouse = {position: {}}
+	mouse.position = Victor(e.pageX - e.target.offsetLeft, e.pageY - e.target.offsetTop);
 	return mouse;
 };
 
