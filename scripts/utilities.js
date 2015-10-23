@@ -1,5 +1,21 @@
 "use strict";
 
+var KEY = {					// "enum" equating keycodes to names (e.g. keycode 32 = spacebar)
+		SPACE: 32,
+		LEFT: 37,
+		UP: 38,
+		RIGHT: 39,
+		DOWN: 40,
+		A: 65,
+		D: 68,
+		E: 69,
+		P: 80,
+		Q: 81,
+		R: 82,
+		S: 83,
+		W: 87
+	};
+
 // get mouse pos on canvas
 function getMouse(e){
 	var mouse = {position: {}}

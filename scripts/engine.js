@@ -16,6 +16,7 @@ game.engine = (function(){
 	var animationID;			// stores animation ID of animation frame
 	var paused = false;			// if the game is paused
 	var mouseDown = false;		// if the mouse is being held down
+	var uiClicked = false;		// if UI was clicked
 	var mouse = {};				// the mouse object
 	var time = 0;
 	
@@ -27,21 +28,7 @@ game.engine = (function(){
 	// GAME VARIABLES
 	// General
 	var globalGameSpeed;		// current speed of the game, mainly used for faster terrain
-	var KEY = {					// "enum" equating keycodes to names (e.g. keycode 32 = spacebar)
-		SPACE: 32,
-		LEFT: 37,
-		UP: 38,
-		RIGHT: 39,
-		DOWN: 40,
-		A: 65,
-		D: 68,
-		E: 69,
-		P: 80,
-		Q: 81,
-		R: 82,
-		S: 83,
-		W: 87
-	};
+	
 	var GAME_STATE = {			// "enum" of the current status of the game
 		START: 0,				// start screen
 		RUNNING: 1,				// players are alive and running
@@ -189,48 +176,60 @@ game.engine = (function(){
 			mouseDown = true;
 			e.preventDefault();
 			
-			// Switch party order on clicks
-			// loop and cycle if they aren't running already
-			if (currentGameState == GAME_STATE.RUNNING) {
-				for (var i = 0; i < players.length; ++i) {
-					// only cycle living players
-					if (players[i].deathTime == 0) {
-						// left click - cycle left
-						if (e.which == 1)
-							players[i].cycleOrder(1);
-						// right click - cycle right
-						if (e.which == 3)
-							players[i].cycleOrder(-1);
-					}
+			// check for mouse presses on the UI
+			uiClicked = game.windowManager.checkMouse(e);
+			
+			// run game actions if the UI was not clicked
+			if(!uiClicked){
+				// Switch party order on clicks
+				// loop and cycle if they aren't running already
+				if (currentGameState === GAME_STATE.RUNNING) {
+					for (var i = 0; i < players.length; ++i) {
+						// only cycle living players
+						if (players[i].deathTime == 0) {
+							// left click - cycle left
+							if (e.which == 1)
+								players[i].cycleOrder(1);
+							// right click - cycle right
+							if (e.which == 3)
+								players[i].cycleOrder(-1);
+						}
+					};
+					
+					// players are now switching positions
+					currentGameState = GAME_STATE.SWITCHING;
 				};
 				
-				// players are now switching positions
-				currentGameState = GAME_STATE.SWITCHING;
-			};
-			
-			// if the player has died
-			if (currentGameState == GAME_STATE.DEAD) {
-				// restart the game
-				setupGame();
-			};
+				// if the player has died
+				if (currentGameState === GAME_STATE.DEAD) {
+					// restart the game
+					setupGame();
+				};
+			}
 		}.bind(this));
 		// compatibility for touch devices
 		canvas.addEventListener("touchstart", function(e) { 
 			mouseDown = true;
 			e.preventDefault();
 			
-			// if the game is running (player is alive)
-			if (currentGameState == GAME_STATE.RUNNING) {
-				for (var i = 0; i < players.length; ++i) {
-					// loop players and jump after a delay based on party order
-					setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
+			// check for mouse presses on the UI
+			uiClicked = game.windowManager.checkMouse(e);
+			
+			// run game actions if the UI was not clicked
+			if(!uiClicked){
+				// if the game is running (player is alive)
+				if (currentGameState == GAME_STATE.RUNNING) {
+					for (var i = 0; i < players.length; ++i) {
+						// loop players and jump after a delay based on party order
+						setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
+					};
 				};
-			};
-			// if the player has died
-			if (currentGameState == GAME_STATE.DEAD) {
-				// restart the game
-				setupGame();
-			};
+				// if the player has died
+				if (currentGameState == GAME_STATE.DEAD) {
+					// restart the game
+					setupGame();
+				};
+			}
 		}.bind(this));
 		// track mouse position
 		canvas.addEventListener("mousemove", function(e) { mouse = getMouse(e) });
@@ -244,12 +243,30 @@ game.engine = (function(){
 		window.addEventListener("keyup", keyRelease);
 		
 		// create starting UI
-		//newUI = new UI(canvas.width/4, canvas.height/4, canvas.width/2, canvas.height/2);
-		//console.log(newUI);
-		//newUI.toggleActive();
-		//newUI.setFill("white");
-		//newUI.makeButton("Score", canvas.width/2 - 20, canvas.height/2 - 20, 40, 40, function() { game.engine.score += 50; });
-		//newUI.toggleButActive("Score");
+		// HUD box for current abilities
+		game.windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
+		// set ability box to sandstone colors
+		game.windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
+		game.windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
+		game.windowManager.toggleUI("abilityHUD");
+		// ability buttons
+		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q})});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.toggleButton("abilityHUD", "ability1");
+		
+		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(wKey){game.engine.keyPress({keyCode: KEY.W});});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.toggleButton("abilityHUD", "ability2");
+		
+		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.toggleButton("abilityHUD", "ability3");
 		
 		// BEGIN main game tick
 		update();
@@ -466,6 +483,11 @@ game.engine = (function(){
 				}
 			}
 		};
+		
+		// draw HUD
+		if(currentGameState != GAME_STATE.DEAD) {
+			game.windowManager.updateAndDraw([]);
+		}
 		
 		// draw score in upper right
 		if (currentGameState != GAME_STATE.DEAD) {
