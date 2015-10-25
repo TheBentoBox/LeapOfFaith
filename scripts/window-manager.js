@@ -553,7 +553,10 @@ game.windowManager = (function(){
 	return {
 		init: init,
 		updateAndDraw: updateAndDraw,
+<<<<<<< HEAD
 		checkMouse: checkMouse,
+=======
+>>>>>>> origin/master
 		makeUI: makeUI,
 		makeButton: makeButton,
 		makeBar: makeBar,

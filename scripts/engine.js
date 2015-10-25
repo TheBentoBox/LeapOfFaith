@@ -266,19 +266,34 @@ game.engine = (function(){
 		game.windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
 		game.windowManager.toggleUI("abilityHUD");
 		// ability buttons
+<<<<<<< HEAD
 		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q})});
+=======
+		var qKey = {keyCode: KEY.Q};
+		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(qKey){game.engine.keyPress(qKey);});
+>>>>>>> origin/master
 		game.windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "10pt Audiowide", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability1");
 		
+<<<<<<< HEAD
 		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(wKey){game.engine.keyPress({keyCode: KEY.W});});
+=======
+		var wKey = {keyCode: KEY.W};
+		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(wKey){game.engine.keyPress(wKey);});
+>>>>>>> origin/master
 		game.windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "10pt Audiowide", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability2");
 		
+<<<<<<< HEAD
 		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
+=======
+		var eKey = {keyCode: KEY.E};
+		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress(eKey);});
+>>>>>>> origin/master
 		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "10pt Audiowide", color: "#0b85a8"});
@@ -503,6 +518,7 @@ game.engine = (function(){
 			}
 		};
 		
+<<<<<<< HEAD
 		// update particle systems
 		for (var i = 0; i < particleSystems.length; ++i)
 			particleSystems[i].update();
@@ -515,6 +531,15 @@ game.engine = (function(){
 			game.windowManager.updateAndDraw([]);
 		
 			// draw score in upper right
+=======
+		// draw HUD
+		if(currentGameState != GAME_STATE.DEAD) {
+			game.windowManager.updateAndDraw([]);
+		}
+		
+		// draw score in upper right
+		if (currentGameState != GAME_STATE.DEAD) {
+>>>>>>> origin/master
 			var grad = ctx.createLinearGradient(0, 0, 150, 0);
 			grad.addColorStop(0, "rgba(0, 0, 0, 0)");
 			grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
