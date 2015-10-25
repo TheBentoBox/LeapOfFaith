@@ -38,14 +38,13 @@ game.windowManager = (function(){
 	// FUNCTION: check clicks on UI
 	function checkMouse(e){
 		var mouse = getMouse(e);	// mouse position
-		console.log("Mouse X: " + mouse.position.x + ", Mouse Y: " + mouse.position.y);
 		var elem;					// UI element
 		var but;					// button
 		var clicked = false;
 		// check if any UI elements were clicked
 		for(var i=0; i < uiElements.length; i++){
 			elem = uiElements[i];
-			console.log("Element bounds: " + elem.position.x + ", " + elem.position.y + ", " + (elem.position.x + elem.size.x) + ", " + (elem.position.y + elem.size.y));
+			//console.log("Element bounds: " + elem.position.x + ", " + elem.position.y + ", " + (elem.position.x + elem.size.x) + ", " + (elem.position.y + elem.size.y));
 			if(mouse.position.x >= elem.position.x && mouse.position.x <= (elem.position.x + elem.size.x) && mouse.position.y >= elem.position.y && mouse.position.y <= (elem.position.y + elem.size.y)){
 				clicked = true;
 				// check if any buttons were clicked inside the clicked element
@@ -54,13 +53,12 @@ game.windowManager = (function(){
 					if(mouse.position.x >= elem.position.x + but.offset.x && mouse.position.x <= elem.position.x + but.offset.x + but.size.x && mouse.position.y >= elem.position.y + but.offset.y && mouse.position.y <= elem.position.y + but.offset.y + but.size.y){
 						// call click event of clicked button
 						but.onClick();
-						console.log(clicked);
 						return clicked;
 					}
 				}
 			}
 		}
-		console.log(clicked);
+		//console.log(clicked);
 		return clicked;
 	}
 	

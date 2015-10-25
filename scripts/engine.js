@@ -9,8 +9,7 @@ game.engine = (function(){
 	
 	/* VARIABLES */
 	// SCREEN AND AUDIO VARIABLES
-	var audioElement;			// audio player reference
-	var songSource;				// current song information
+	var bgPlayer;				// audio player reference for background audio
 	var canvas,ctx;				// canvas references
 	var mouseX, mouseY;			// mouse coordinates
 	var animationID;			// stores animation ID of animation frame
@@ -44,7 +43,7 @@ game.engine = (function(){
 	var TERRAIN_WIDTH = 100;	// width of each terrain object, think of it like "block width"
 	var TERRAIN_HEIGHT = 100;	// height of each terrain object, how high from the bottom it goes
 	var terrains = [];			// array to hold terrain objects
-	var TERRAIN_TYPE = {		// "enum" of terrain types
+	var TERRAIN_TYPES = {		// "enum" of terrain types
 		BASE: 0,
 		VOID: 1,
 		LAVA: 2
@@ -53,19 +52,21 @@ game.engine = (function(){
 	var players = [];			// array that holds all 3 players
 	var paladin = {};			// direct reference to the paladin
 	var ranger = {};			// direct reference to the ranger
-	var magi = {};			// direct reference to the magi
+	var magi = {};				// direct reference to the magi
 	// Player classes
 	var PLAYER_CLASSES = {		// enum storing class info
 		PALADIN: {
 			name: "Paladin",
 			health: 125,
 			img: new Image(),
-			width: 85,
-			height: 125,
+			width: 65,
+			height: 150,
 			qDur: 300,
 			qCool: 350,
+			qSnd: "shield.wav",
 			wDur: 24,
-			wCool: 350
+			wCool: 350,
+			wSnd: "arrow.wav"
 		},
 		RANGER: {
 			name: "Ranger",
@@ -75,8 +76,10 @@ game.engine = (function(){
 			height: 125,
 			qDur: 0,
 			qCool: 5,
+			qSnd: "arrow.wav",
 			wDur: 0,
-			wCool: 300
+			wCool: 300,
+			wSnd: undefined
 		},
 		MAGI: {
 			name: "Magi",
@@ -86,8 +89,10 @@ game.engine = (function(){
 			height: 125,
 			qDur: 0,
 			qCool: 30,
+			qSnd: "fireball.wav",
 			wDur: 200,
-			wCool: 650
+			wCool: 650,
+			wSnd: "iceBridge.wav"
 		}
 	};
 	// Enemies
@@ -149,6 +154,17 @@ game.engine = (function(){
 			velocity: -20
 		}
 	};
+	// Particle Systems
+	var particleSystems = [];
+	var particles = [];
+	var PARTICLE_TYPES = {		// enum storing particle type info
+		FLAME: {
+			collidesTerrain: false,
+			gravity: false,
+			speed: 1,
+			img: new Image()
+		}
+	}
 	
 	// PHYSICS VARIABLES
 	var GRAVITY = 0.98;			// global gravity
@@ -165,10 +181,10 @@ game.engine = (function(){
 		ctx = canvas.getContext("2d")
 		
 		// get reference to audio element
-		audioElement = document.querySelector('audio');
+		bgPlayer = document.querySelector('audio');
 		
 		// load default song and title, and play
-		playStream(audioElement);
+		//playStream(bgPlayer);
 		loadAssets();
 		
 		// taps working as jumps 
@@ -288,7 +304,7 @@ game.engine = (function(){
 		enemies[0] = new Enemy(ENEMY_TYPES.GOBLIN);
 		
 		globalGameSpeed = 8;
-		currentTerrainType = TERRAIN_TYPE.BASE;
+		currentTerrainType = TERRAIN_TYPES.BASE;
 		// generate initial terrain
 		for (var i = 0; i < Math.floor(canvas.width*1.5/TERRAIN_WIDTH); ++i) {
 			terrains[i] = new Terrain(i*TERRAIN_WIDTH);
@@ -304,18 +320,21 @@ game.engine = (function(){
 		background.src = "assets/Wall720.png";
 		baseImg.src = "assets/TileSandstone100.png";
 		lavaImg.src = "assets/lava.png";
-		PLAYER_CLASSES.PALADIN.img.src = "assets/paladin.png";
+		
+		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
 		PLAYER_CLASSES.RANGER.img.src = "assets/ranger.png";
 		PLAYER_CLASSES.MAGI.img.src = "assets/magi.png";
+		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
+		
+		PARTICLE_TYPES.FLAME.img.src = "assets/flameParticle.png";
 	};
 	
 	// change song
-	function playStream(audioElement){
-		audioElement.src = songSource;
-		audioElement.play();
-		audioElement.volume = 0.2;
+	function playStream(source){
+		var player = new Audio("assets/" + source);
+		player.play();
 	};
 	
 	// main game tick
@@ -469,8 +488,8 @@ game.engine = (function(){
 			// check if we've reached the end of this terrain type
 			if (terrainCount <= 0) {
 				// force base ground to generate after each other terrain type
-				if (currentTerrainType != TERRAIN_TYPE.BASE) {
-					currentTerrainType = TERRAIN_TYPE.BASE;
+				if (currentTerrainType != TERRAIN_TYPES.BASE) {
+					currentTerrainType = TERRAIN_TYPES.BASE;
 					// ground patches get shorter as game speeds up
 					terrainCount = Math.max(3, Math.round(15 - globalGameSpeed*.75));
 				}
@@ -484,24 +503,28 @@ game.engine = (function(){
 			}
 		};
 		
+		// update particle systems
+		for (var i = 0; i < particleSystems.length; ++i)
+			particleSystems[i].update();
+		// update all particles
+		for (var i = 0; i < particles.length; ++i)
+			particles[i].update();
+		
 		// draw HUD
 		if(currentGameState != GAME_STATE.DEAD) {
 			game.windowManager.updateAndDraw([]);
-		}
 		
-		// draw score in upper right
-		if (currentGameState != GAME_STATE.DEAD) {
+			// draw score in upper right
 			var grad = ctx.createLinearGradient(0, 0, 150, 0);
-				grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-				grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-				ctx.fillStyle = grad;
-				ctx.fillRect(canvas.width-150, 0, 150, 50);
-				fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
-				ctx.fill();
+			grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+			grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+			ctx.fillStyle = grad;
+			ctx.fillRect(canvas.width-150, 0, 150, 50);
+			fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
+			ctx.fill();
 		}
-		
 		// draw death screen if player has died
-		if (currentGameState == GAME_STATE.DEAD) {
+		else {
 			ctx.save();
 			ctx.fillStyle = "black";
 			ctx.globalAlpha = 0.7;
@@ -520,6 +543,8 @@ game.engine = (function(){
 		this.position = new Victor();
 		// bounding box width and height for game object
 		this.bounds = new Victor();
+		// offset to draw the object's image at, changes it's "point of rotation" in a sense
+		this.offset = new Victor();
 		
 		// MUTATOR: force object's position, within bounds of canvas
 		this.setPosition = function(x, y) {
@@ -570,13 +595,19 @@ game.engine = (function(){
 		this.jump = function(speed, startingPush, force) {
 			// first check if they're on the ground
 			if (this.numJumps < this.maxJumps || force) {
+				// don't increment number of jumps if it's a forced jump
 				if (!force)
 					++this.numJumps;
+					
+				// play jump sound effect
+				playStream("jump.wav");
 			
 				// give the initial thrust
 				this.velocity.y = -speed;
 				this.position.y -= startingPush;
 				this.onGround = false;
+				// force animation to run a bit
+				++this.time;
 			};}.bind(this);
 	};
 	
@@ -607,7 +638,7 @@ game.engine = (function(){
 		
 		// FUNCTION: returns if the terrain is solid
 		this.isSolid = function() {
-			return this.terrainType === TERRAIN_TYPE.BASE || this.iced;
+			return this.terrainType === TERRAIN_TYPES.BASE || this.iced;
 		}
 		
 		// FUNCTION: update terrain position, draw it
@@ -629,7 +660,7 @@ game.engine = (function(){
 						}
 						
 						// if it's lava, bounce the player and damage them
-						if (this.terrainType === TERRAIN_TYPE.LAVA && players[i].position.y + players[i].bounds.y > this.position.y + this.bounds.y/10) {
+						if (this.terrainType === TERRAIN_TYPES.LAVA && players[i].position.y + players[i].bounds.y > this.position.y + this.bounds.y/10) {
 							players[i].jump(15, 1, true); // forced jump
 							players[i].numJumps = 0; // reset jumps so the forced jump doesn't kill them
 							players[i].damage(10); // do some damage
@@ -641,14 +672,14 @@ game.engine = (function(){
 			ctx.save();
 			switch(this.terrainType) {
 				// void, do nothing
-				case TERRAIN_TYPE.VOID:
+				case TERRAIN_TYPES.VOID:
 					break;
 				// base terrain
-				case TERRAIN_TYPE.BASE:
+				case TERRAIN_TYPES.BASE:
 					ctx.drawImage(baseImg, this.position.x, this.position.y);
 					break;
 				// lava
-				case TERRAIN_TYPE.LAVA:
+				case TERRAIN_TYPES.LAVA:
 					ctx.drawImage(lavaImg, this.position.x, this.position.y);
 					break;
 			};
@@ -673,7 +704,7 @@ game.engine = (function(){
 		this.order = players.length; 	// order in the party - defaults to last
 		this.maxHealth = this.health = classType.health; // this player's health and max health
 		this.deathTime = 0;
-		this.bounds = new Victor(					// the player's bounding width and height
+		this.bounds = new Victor(		// the player's bounding width and height
 			this.classType.width,
 			this.classType.height
 		);
@@ -681,7 +712,13 @@ game.engine = (function(){
 			275 - players.length*75,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.y-250
 		);
-		this.abilities = {	// stores current cooldown on each skill
+		
+		switch (this.classType) {		// set the player's image offset based on its class
+			case PLAYER_CLASSES.PALADIN:
+				this.offset = new Victor(-65, -25);
+				break;
+		};
+		this.abilities = {				// stores current cooldown on each skill
 			Q: {
 				duration: 0,
 				cooldown: 0,
@@ -709,6 +746,7 @@ game.engine = (function(){
 				this.E.cooldown = Math.max(0, this.E.cooldown-1);
 			}
 		};
+		this.time = 0;					// used to control animation timing
 		
 		// FUNCTION: cycle order by a number
 		// can be negative to cycle right
@@ -735,6 +773,13 @@ game.engine = (function(){
 		
 		// FUNCTION: main player object tick
 		this.update = function() {	
+			// increment timing for animation
+			if (this.onGround)
+				this.time = (this.time+0.75) % 28;
+			else
+				if (this.time != 0 && this.time != 13)
+					this.time = Math.round(this.time+1) % 28;
+		
 			// if deathTime is below 0 (they are invulnerable), increase it
 			if (this.deathTime < 0)
 				++this.deathTime;
@@ -862,8 +907,12 @@ game.engine = (function(){
 		this.draw = function() {
 			ctx.save();
 			// draw the player's actualy image
-			ctx.drawImage(this.classType.img, this.position.x, this.position.y);
-			
+			if (this.classType == PLAYER_CLASSES.PALADIN) {
+				ctx.drawImage(this.classType.img, 179*Math.floor(this.time), 0, 179, this.classType.img.height, this.position.x + this.offset.x, this.position.y + this.offset.y, 179, this.classType.img.height);
+			}
+			else
+				ctx.drawImage(this.classType.img, this.position.x, this.position.y);
+				
 			// if the one drawing is the paladin, draw the shield if it's up
 			if (this.classType == PLAYER_CLASSES.PALADIN && this.abilities.Q.duration > 0) {
 				// prepare fill style
@@ -896,46 +945,47 @@ game.engine = (function(){
 		/* ATTACKING */
 		// FUNCTION: 1st attack ('Q')
 		this.baseAttack = function() {
-			switch(this.classType) {
-				case PLAYER_CLASSES.PALADIN:
-					// if shield is off cooldown, activate it
-					if (this.abilities.Q.cooldown === 0) {
+			// if the ability is off cooldown, activate it
+			if (this.abilities.Q.cooldown === 0) {
+				// play the ability's sound effect
+				playStream(this.classType.qSnd);
+				
+				switch(this.classType) {
+					case PLAYER_CLASSES.PALADIN:
+						// activate the shield
 						this.abilities.Q.duration = this.abilities.Q.maxDur;
 						this.abilities.Q.cooldown = this.abilities.Q.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.RANGER:
-					// shoot an arrow towards the first enemy
-					if (this.abilities.Q.cooldown === 0) {
+						break;
+					case PLAYER_CLASSES.RANGER:
+						// shoot an arrow towards the first enemy
 						projectiles.push(new Projectile(this.position.x+this.bounds.x/2, this.position.y+this.bounds.y/2, enemies[0], PROJECTILE_TYPES.ARROW, false));
 						this.abilities.Q.duration = this.abilities.Q.maxDur;
 						this.abilities.Q.cooldown = this.abilities.Q.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.MAGI:
-					// shoot a fireball
-					if (this.abilities.Q.cooldown === 0) {
+						break;
+					case PLAYER_CLASSES.MAGI:
+						// shoot a fireball
 						projectiles.push(new Projectile(this.position.x+this.bounds.x/2, this.position.y+this.bounds.y/2, enemies[0], PROJECTILE_TYPES.MAGIFIREBALL, false));
 						this.abilities.Q.duration = this.abilities.Q.maxDur;
 						this.abilities.Q.cooldown = this.abilities.Q.maxCool;
-					}
-					break;
+						break;
+				};
 			};
 		};
 		
 		// FUNCTION: 2nd attack ('W')
 		this.midAttack = function() {
-			switch(this.classType) {
-				case PLAYER_CLASSES.PALADIN:
-					// if shield is off cooldown, activate it
-					if (this.abilities.W.cooldown === 0) {
+			// if the ability is off cooldown, activate it
+			if (this.abilities.W.cooldown === 0) {
+				// play the ability's sound effect
+				playStream(this.classType.wSnd);
+				
+				switch(this.classType) {
+					case PLAYER_CLASSES.PALADIN:
+						// dash forward
 						this.abilities.W.duration = this.abilities.W.maxDur;
 						this.abilities.W.cooldown = this.abilities.W.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.RANGER:
-					// shoot an arrow towards the first enemy
-					if (this.abilities.W.cooldown === 0) {
+						break;
+					case PLAYER_CLASSES.RANGER:
 						// loop players and force a jump after a delay based on party order
 						for (var i = 0; i < players.length; ++i) {
 							// only schedule jumps for living players
@@ -945,18 +995,18 @@ game.engine = (function(){
 						};
 						this.abilities.W.duration = this.abilities.W.maxDur;
 						this.abilities.W.cooldown = this.abilities.W.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.MAGI:
-					// ice over terrains
-					if (this.abilities.W.cooldown === 0 && this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
-						for (var i = 0; i < terrains.length; ++i) {
-							terrains[i].iced = true;
+						break;
+					case PLAYER_CLASSES.MAGI:
+						// ice over terrains
+						if (this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
+							for (var i = 0; i < terrains.length; ++i) {
+								terrains[i].iced = true;
+							}
+							this.abilities.W.duration = this.abilities.W.maxDur;
+							this.abilities.W.cooldown = this.abilities.W.maxCool;
 						}
-						this.abilities.W.duration = this.abilities.W.maxDur;
-						this.abilities.W.cooldown = this.abilities.W.maxCool;
-					}
-					break;
+						break;
+				};
 			};
 		};
 	};
@@ -989,6 +1039,15 @@ game.engine = (function(){
 				this.velocity = Victor().subtract(this.position);
 		else
 			this.velocity = Victor().subtract(this.position);
+			
+		// attach a particle system based on its projectile type
+		switch (this.projType) {
+			case PROJECTILE_TYPES.FIREBALL:
+			case PROJECTILE_TYPES.MAGIFIREBALL:
+				this.system = new ParticleSystem(this, PARTICLE_TYPES.FLAME, -1, 10, 20);
+				particleSystems.push(this.system);
+				break;
+		};
 		
 		// give an upwards thrust if it's affected by gravity
 		if (this.gravity)
@@ -1000,6 +1059,8 @@ game.engine = (function(){
 			if (this.position.y > canvas.height*2 || this.position.x < 0 || this.position.x > canvas.width) {
 				// delete this one
 				projectiles.splice(projectiles.indexOf(this), 1);
+				particleSystems.splice(particleSystems.indexOf(this.system), 1);
+				return;
 			};
 			
 			// whether the projectile has collided with something
@@ -1101,6 +1162,7 @@ game.engine = (function(){
 				}
 			
 				// delete this one
+				particleSystems.splice(particleSystems.indexOf(this.system), 1);
 				projectiles.splice(projectiles.indexOf(this), 1);
 			};
 				
@@ -1308,6 +1370,133 @@ game.engine = (function(){
 			ctx.restore();
 		};
 	};
+ 
+	// CLASS: particle system
+	function ParticleSystem(root, particleType, lifetime, particleLifetime, particlesPerFrame) {
+		// assign starting variables
+		this.root = root;						// the object this is linked to
+		this.position = root.position.clone();	// system's position
+		this.time = 0;							// system's time lived
+		
+		// update particle system
+		this.update = function() {
+			// delete this if its root is gone
+			if (this.root == undefined) {
+				console.log("Particle system died because its root died");
+				particleSystems.splice(particleSystems.indexOf(this), 1);
+				return;
+			}
+		
+			// stick to the root object
+			this.position = root.position.clone().add(root.bounds.clone().divide(Victor(2, 2)));
+		
+			// attempt to create new particles
+			if (particlesPerFrame >= 1) {
+				for (var i = 0; i < particlesPerFrame; ++i)
+					particles.push(new Particle(this, particleType, particleLifetime));
+			}
+			// only a chance to create one if <1 per frame
+			else if (Math.random() < particlesPerFrame)
+				particles.push(new Particle(this, particleType, particleLifetime));
+			
+			// increment time lived
+			++this.time;
+			// delete this system if its time lived has surpassed its lifetime
+			if (this.time > lifetime && lifetime > 0) {
+				console.log("Particle system died naturally");
+				particleSystems.splice(particleSystems.indexOf(this), 1);
+			}
+		}
+	}
+	
+	// CLASS: particle
+	function Particle(parent, particleType, lifetime) {
+		// inherits from MobileGameObject
+		MobileObject.call(this);
+	
+		// assign starting variables
+		this.particleType = particleType;	// what type of particle this is
+		this.deathtime = 0; 				// used to kill particles if they don't die naturally
+		this.lifetime = lifetime;
+		this.position = parent.position;
+		this.velocity = new Victor(rand(-1, 1)*this.particleType.speed, rand(-1, 1)*this.particleType.speed);
+		this.bounds = new Victor(3, 3);
+		this.time = 0;
+		
+		// update particle
+		this.update = function() {
+			// affected by gravity based on particle type
+			if (this.particleType.gravity)
+				this.velocity.y += GRAVITY;
+		
+			// if particle type collides with terrain, do pixel collisions
+			if (this.particleType.collidesTerrain) {
+				// loop through velocity
+				for (var i = 0; i < this.velocity.length(); ++i) {	
+				// distance we'll move along each axis this loop
+				var moveDistX = 0; var moveDistY = 0;
+				// move distance is 1, or the decimal remainder of velocity on the last loop
+				// only actually update the moveDist if it would be > 0
+				if (Math.abs(this.velocity.x) - i > 0)
+					moveDistX = (Math.abs(this.velocity.x) - i < 1 ? Math.abs(this.velocity.x) - i : 1) * Math.sign(this.velocity.x);
+				// only do vertical target tracking if they're a flying enemy
+				if (Math.abs(this.velocity.y) - i > 0)
+					moveDistY = (Math.abs(this.velocity.y) - i < 1 ? Math.abs(this.velocity.y) - i : 1) * Math.sign(this.velocity.y);
+				
+				// variable to store if its safe to move
+				var positionSafe = true;
+				
+				// loop through terrain objects and check if we can move down
+				for (var ii = 0; ii < terrains.length; ++ii) {
+					// get currently looped terrain object
+					var currentTerrain = terrains[ii];
+					
+					// check is position we'd move to is safe (above terrain)
+					// terrain we're checking is below is
+					if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.x + moveDistX > currentTerrain.position.x) {
+						// terrain below us is solid ground and we'd be inside it if we moved down
+						if (this.position.y + this.bounds.y + moveDistY > currentTerrain.position.y && currentTerrain.isSolid()) {
+							// it's not safe to move
+							positionSafe = false;
+							break;
+						};
+					};
+				};
+				
+				// if we're safe to move, shift down
+				if (positionSafe || (this.position.y + this.bounds.y > currentTerrain.position.y)) {
+					this.position.x += moveDistX;
+					this.position.y += moveDistY;
+				}
+				// otherwise, bounce
+				else {
+					this.velocity.y *= -0.85;
+					break;
+				};
+			}
+			}
+			// otherwise, just move
+			else
+				this.position.add(this.velocity);
+			
+			// increment death timer if the particle is barely moving
+			if (this.velocity.length() < 0.1)
+				++this.deathTime;
+			// increment time lived
+			++this.time;
+			
+			// delete this particle if its time lived has surpassed its lifetime, if it has been still for 100 ticks,
+			// or if it has moved offscreen
+			if ((this.time > this.lifetime && this.lifetime > 0) || this.deathTime > 100 ||
+				 this.position.x < 0 || this.position.x > canvas.width || this.position.y < 0 || this.position.y > canvas.height) {
+				particles.splice(particles.indexOf(this), 1);
+				return;
+			}
+				
+			// draw based on particle type
+			ctx.drawImage(this.particleType.img, this.position.x, this.position.y);
+		};
+	}
  
 	// PAUSE FUNCTION: pauses the game
 	function pauseGame() {
