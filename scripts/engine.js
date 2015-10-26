@@ -17,6 +17,8 @@ game.engine = (function(){
 	var mouseDown = false;		// if the mouse is being held down
 	var uiClicked = false;		// if UI was clicked
 	var mouse = {};				// the mouse object
+	var lastTime = (+new Date); // used with calculateDeltaTime
+	var dt = 0;					// delta time
 	var time = 0;
 	
 	// ASSETS
@@ -27,16 +29,17 @@ game.engine = (function(){
 	// GAME VARIABLES
 	// General
 	var globalGameSpeed;		// current speed of the game, mainly used for faster terrain
-	
 	var GAME_STATE = {			// "enum" of the current status of the game
 		START: 0,				// start screen
 		RUNNING: 1,				// players are alive and running
 		SWITCHING: 2,			// players are swapping positions
-		DEAD: 3					// entire party is dead
+		DEAD: 3,				// entire party is dead
+		HIGHSCORE: 4			// viewing the high score table
 	};
 	var currentGameState = GAME_STATE.START;	// what is currently happening in the game
 	var keys = [];				// array to store pressed keys
 	var score = 0;				// current score, = number of terrain objects passed
+	var highScores = [];		// array of high scores when they're loaded in
 	// Terrain
 	var currentTerrainType;		// current type of floor object being generated
 	var terrainCount;			// number of terrain type to be generated before switching
@@ -79,7 +82,7 @@ game.engine = (function(){
 			qSnd: "arrow.wav",
 			wDur: 0,
 			wCool: 300,
-			wSnd: undefined
+			wSnd: "run.wav"
 		},
 		MAGI: {
 			name: "Magi",
@@ -161,13 +164,19 @@ game.engine = (function(){
 		FLAME: {
 			collidesTerrain: false,
 			gravity: false,
-			speed: 1,
+			vel: function() { return new Victor(rand(-1, 1), rand(-1, 1)); },
+			img: new Image()
+		},
+		ICE: {
+			collidesTerrain: true,
+			gravity: true,
+			vel: function() { return new Victor(rand(10, 30), rand(-10, -30)); },
 			img: new Image()
 		}
 	}
 	
 	// PHYSICS VARIABLES
-	var GRAVITY = 0.98;			// global gravity
+	var GRAVITY = 60;			// global gravity - this*dt added to velocity.y
 	var jumpFunction = function() { return 1000/60*TERRAIN_WIDTH/globalGameSpeed; };
 	var globalLastTerrain = {};
 	var newUI = undefined;
@@ -327,11 +336,13 @@ game.engine = (function(){
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
 		
 		PARTICLE_TYPES.FLAME.img.src = "assets/flameParticle.png";
+		PARTICLE_TYPES.ICE.img.src = "assets/iceParticle.png";
 	};
 	
-	// change song
-	function playStream(source){
+	// play a sound effect
+	function playStream(source, vol) {
 		var player = new Audio("assets/" + source);
+		player.volume = vol;
 		player.play();
 	};
 	
@@ -339,6 +350,7 @@ game.engine = (function(){
 	function update() {
 		// scedule next draw frame
 		animationID = requestAnimationFrame(update);
+		dt = calculateDeltaTime();
 		++time;
 		
 		// start game if on start screen and space or start is being pressed
@@ -357,11 +369,37 @@ game.engine = (function(){
 				fillText(ctx, "Party members respawn after a delay, and they regen health slowly", canvas.width/2, canvas.height/2+40, "20pt Calibri", "white");
 				fillText(ctx, "Get points from surviving and killing enemies", canvas.width/2, canvas.height/2+70, "20pt Calibri", "white");
 				fillText(ctx, "(The enemies are the boxes with pro jumping and flying skills)", canvas.width/2, canvas.height/2+95, "12pt Calibri", "white");
-				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
-				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
+				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
+				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
+				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
 			}
 			return;
 		}
+		
+		// draw high score screen
+		if (currentGameState === GAME_STATE.HIGHSCORE) {
+			ctx.fillStyle = "rgb(20, 20, 20)";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fill();
+			fillText(ctx, "High Scores", canvas.width/2, 100, "30pt Calibri", "white");
+			fillText(ctx, "Press H to return to the main menu", canvas.width/2, 135, "18pt Calibri", "white");
+			
+			// only draw high scores if localStorage is available
+			if (typeof(window.localStorage) != undefined) {
+				// loop through scores
+				for (var i = 0; i < 10; ++i)
+					// draw 0 in place of null scores
+					if (highScores[i] == "null")
+						fillText(ctx, (i+1) + ". 0", canvas.width/2, 200 + i*40, "20pt Calibri", "white");
+					else
+						fillText(ctx, (i+1) + ". " + highScores[i], canvas.width/2, 200 + i*40, "20pt Calibri", "white");
+			}
+			// otherwise, draw an error message
+			else {
+				fillText(ctx, "Your system does not support high score storage", canvas.width/2, canvas.height/2, "18pt Calibri", "white");
+			}
+			return;
+		};
 	 	
 	 	// if paused, bail out of loop
 		if (paused && currentGameState === GAME_STATE.RUNNING) {
@@ -408,6 +446,7 @@ game.engine = (function(){
 			// if player is alive, update
 			if (players[i].deathTime == 0)
 				players[i].update();
+				
 			// if they're dead, increment death counter and respawn if it's been long enough
 			else {
 				++numDead;
@@ -429,9 +468,36 @@ game.engine = (function(){
 		};
 		
 		// if everyone is dead, send game to death screen
-		if (numDead === players.length) {
+		if (numDead === players.length && currentGameState != GAME_STATE.DEAD) {
 			players = [];
 			currentGameState = GAME_STATE.DEAD;
+			
+			// attempt to add the score to the high score list
+			if (typeof(window.localStore) != undefined) {
+				// loop through stored scores
+				for (var i = 0; i < 10; ++i) {
+					// get the stored score
+					var value = window.localStorage.getItem("score"+i);
+					console.log(value);
+					
+					// if no score is there yet, put this one there
+					if (value === null) {
+						window.localStorage.setItem("score"+i, score);
+						return;
+					}
+					
+					// if this score is higher than that one, put this one in and push the rest down
+					if (score > value) {
+						// push rest down
+						for (var ii = 9; ii > i; --ii) {
+							window.localStorage.setItem("score"+ii, window.localStorage.getItem("score"+(ii-1)));
+						}
+						// put this one here
+						window.localStorage.setItem("score"+i, score);
+						return;
+					}
+				}
+			}
 		}
 		
 		// add an enemy if there isn't one
@@ -509,7 +575,7 @@ game.engine = (function(){
 			particles[i].update();
 		
 		// draw HUD
-		if(currentGameState != GAME_STATE.DEAD) {
+		if (currentGameState != GAME_STATE.DEAD) {
 			game.windowManager.updateAndDraw([]);
 		
 			// draw score in upper right
@@ -530,7 +596,8 @@ game.engine = (function(){
 			ctx.fill();
 			fillText(ctx, "You died.", canvas.width/2, canvas.height/2 - 40, "30pt Calibri", "white");
 			fillText(ctx, "Score: " + score, canvas.width/2, canvas.height/2, "24pt Calibri", "white");
-			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
+			fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
+			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 80, "24pt Calibri", "white");
 			ctx.restore();
 		};
 	};
@@ -596,10 +663,7 @@ game.engine = (function(){
 				// don't increment number of jumps if it's a forced jump
 				if (!force)
 					++this.numJumps;
-					
-				// play jump sound effect
-				playStream("jump.wav");
-			
+				
 				// give the initial thrust
 				this.velocity.y = -speed;
 				this.position.y -= startingPush;
@@ -777,6 +841,10 @@ game.engine = (function(){
 			else
 				if (this.time != 0 && this.time != 13)
 					this.time = Math.round(this.time+1) % 28;
+					
+			// occasionally play running sfx
+			if (this.onGround && time % 15 + this.order == 0)
+				playStream("run.wav", 0.175);
 		
 			// if deathTime is below 0 (they are invulnerable), increase it
 			if (this.deathTime < 0)
@@ -849,7 +917,7 @@ game.engine = (function(){
 			// if off ground, update physics and check if on ground
 			if (!this.onGround) {		
 				// update phsyics
-				this.velocity.y += GRAVITY
+				this.velocity.y += GRAVITY*dt
 					
 				// loop through velocity
 				for (var i = 0; i < Math.abs(this.velocity.y); ++i) {
@@ -946,7 +1014,7 @@ game.engine = (function(){
 			// if the ability is off cooldown, activate it
 			if (this.abilities.Q.cooldown === 0) {
 				// play the ability's sound effect
-				playStream(this.classType.qSnd);
+				playStream(this.classType.qSnd, 0.2);
 				
 				switch(this.classType) {
 					case PLAYER_CLASSES.PALADIN:
@@ -975,7 +1043,7 @@ game.engine = (function(){
 			// if the ability is off cooldown, activate it
 			if (this.abilities.W.cooldown === 0) {
 				// play the ability's sound effect
-				playStream(this.classType.wSnd);
+				playStream(this.classType.wSnd, 0.2);
 				
 				switch(this.classType) {
 					case PLAYER_CLASSES.PALADIN:
@@ -999,6 +1067,7 @@ game.engine = (function(){
 						if (this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
 							for (var i = 0; i < terrains.length; ++i) {
 								terrains[i].iced = true;
+								particleSystems.push(new ParticleSystem(this, PARTICLE_TYPES.ICE, 30, -1, 0.1));
 							}
 							this.abilities.W.duration = this.abilities.W.maxDur;
 							this.abilities.W.cooldown = this.abilities.W.maxCool;
@@ -1145,7 +1214,7 @@ game.engine = (function(){
 			if (!collided) {		
 				// update phsyics
 				if (this.gravity)
-					this.velocity.y += GRAVITY
+					this.velocity.y += GRAVITY*dt
 				this.position.x += this.velocity.x;
 				this.position.y += this.velocity.y;
 			}
@@ -1282,7 +1351,7 @@ game.engine = (function(){
 			
 				// update phsyics
 				if (!this.onGround)
-					this.velocity.y += GRAVITY
+					this.velocity.y += GRAVITY*dt
 			}
 			
 			// loop through velocity
@@ -1380,7 +1449,6 @@ game.engine = (function(){
 		this.update = function() {
 			// delete this if its root is gone
 			if (this.root == undefined) {
-				console.log("Particle system died because its root died");
 				particleSystems.splice(particleSystems.indexOf(this), 1);
 				return;
 			}
@@ -1401,7 +1469,6 @@ game.engine = (function(){
 			++this.time;
 			// delete this system if its time lived has surpassed its lifetime
 			if (this.time > lifetime && lifetime > 0) {
-				console.log("Particle system died naturally");
 				particleSystems.splice(particleSystems.indexOf(this), 1);
 			}
 		}
@@ -1417,7 +1484,7 @@ game.engine = (function(){
 		this.deathtime = 0; 				// used to kill particles if they don't die naturally
 		this.lifetime = lifetime;
 		this.position = parent.position;
-		this.velocity = new Victor(rand(-1, 1)*this.particleType.speed, rand(-1, 1)*this.particleType.speed);
+		this.velocity = this.particleType.vel();
 		this.bounds = new Victor(3, 3);
 		this.time = 0;
 		
@@ -1425,7 +1492,7 @@ game.engine = (function(){
 		this.update = function() {
 			// affected by gravity based on particle type
 			if (this.particleType.gravity)
-				this.velocity.y += GRAVITY;
+				this.velocity.y += GRAVITY*dt;
 		
 			// if particle type collides with terrain, do pixel collisions
 			if (this.particleType.collidesTerrain) {
@@ -1536,7 +1603,7 @@ game.engine = (function(){
 			keys[e.keyCode] = false;
 		
 		// spacebar - jump!
-		if (e.keyCode == KEY.SPACE) {
+		if (e.keyCode === KEY.SPACE) {
 			// loop players and jump after a delay based on party order
 			for (var i = 0; i < players.length; ++i) {
 				// only schedule jumps for living players
@@ -1551,7 +1618,7 @@ game.engine = (function(){
 		};
 		
 		// q - make first player trigger Q ability
-		if (e.keyCode == KEY.Q && keys[e.keyCode] == false) {
+		if (e.keyCode === KEY.Q && keys[e.keyCode] == false) {
 			// loop players and only initiate ability on one at order 0
 			for (var i = 0; i < players.length; ++i) {
 				if (players[i].order == 0  && players[i].deathTime == 0)
@@ -1560,7 +1627,7 @@ game.engine = (function(){
 		};
 		
 		// w - make first player trigger W ability
-		if (e.keyCode == KEY.W && keys[e.keyCode] == false) {
+		if (e.keyCode === KEY.W && keys[e.keyCode] == false) {
 			// loop players and only initiate ability on one at order 0
 			for (var i = 0; i < players.length; ++i) {
 				if (players[i].order == 0  && players[i].deathTime == 0)
@@ -1569,13 +1636,33 @@ game.engine = (function(){
 		};
 		
 		// p - toggle game paused
-		if (e.keyCode == KEY.P) {
+		if (e.keyCode === KEY.P) {
 			// check if paused, and toggle it
 			if (paused)
 				resumeGame();
 			else
 				pauseGame();
 		};
+		
+		// h - view high scores if on main or death screen
+		if (e.keyCode === KEY.H) {
+			// return to home screen after viewing high scores
+			if (currentGameState === GAME_STATE.HIGHSCORE) {
+				currentGameState = GAME_STATE.START;
+			}
+			else
+			if (currentGameState === GAME_STATE.DEAD || currentGameState === GAME_STATE.START) {
+				currentGameState = GAME_STATE.HIGHSCORE;
+				
+				// load in the scores from local storage
+				highScores = [];
+				for (var i = 0; i < 10; ++i) {
+					if (typeof(window.localStorage) != undefined) {
+						highScores[i] = window.localStorage.getItem("score"+i);
+					}
+				}
+			}
+		}
 		
 		// set the keycode to true
 		// we do this last so we can check if this is the first tick it's pressed
@@ -1591,11 +1678,21 @@ game.engine = (function(){
 			e.preventDefault();
 			 
 			// if the player has died
-			if (currentGameState == GAME_STATE.DEAD) {
+			if (currentGameState === GAME_STATE.DEAD) {
 				// restart the game
 				currentGameState = GAME_STATE.START;
 			};
 		};
+	};
+	
+	// FUNCTION: calculate the delta time, used for animation and physics
+	function calculateDeltaTime() {
+		var now, fps;
+		now = (+new Date); 
+		fps = 1000 / (now - lastTime);
+		fps = clamp(fps, 12, 60);
+		lastTime = now; 
+		return 1/fps;
 	};
 	
 	// return public interface for engine module
