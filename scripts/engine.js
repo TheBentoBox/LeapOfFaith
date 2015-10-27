@@ -9,14 +9,16 @@ game.engine = (function(){
 	
 	/* VARIABLES */
 	// SCREEN AND AUDIO VARIABLES
-	var audioElement;			// audio player reference
-	var songSource;				// current song information
+	var bgPlayer;				// audio player reference for background audio
 	var canvas,ctx;				// canvas references
 	var mouseX, mouseY;			// mouse coordinates
 	var animationID;			// stores animation ID of animation frame
 	var paused = false;			// if the game is paused
 	var mouseDown = false;		// if the mouse is being held down
+	var uiClicked = false;		// if UI was clicked
 	var mouse = {};				// the mouse object
+	var lastTime = (+new Date); // used with calculateDeltaTime
+	var dt = 0;					// delta time
 	var time = 0;
 	
 	// ASSETS
@@ -27,37 +29,24 @@ game.engine = (function(){
 	// GAME VARIABLES
 	// General
 	var globalGameSpeed;		// current speed of the game, mainly used for faster terrain
-	var KEY = {					// "enum" equating keycodes to names (e.g. keycode 32 = spacebar)
-		SPACE: 32,
-		LEFT: 37,
-		UP: 38,
-		RIGHT: 39,
-		DOWN: 40,
-		A: 65,
-		D: 68,
-		E: 69,
-		P: 80,
-		Q: 81,
-		R: 82,
-		S: 83,
-		W: 87
-	};
 	var GAME_STATE = {			// "enum" of the current status of the game
 		START: 0,				// start screen
 		RUNNING: 1,				// players are alive and running
 		SWITCHING: 2,			// players are swapping positions
-		DEAD: 3					// entire party is dead
+		DEAD: 3,				// entire party is dead
+		HIGHSCORE: 4			// viewing the high score table
 	};
 	var currentGameState = GAME_STATE.START;	// what is currently happening in the game
 	var keys = [];				// array to store pressed keys
 	var score = 0;				// current score, = number of terrain objects passed
+	var highScores = [];		// array of high scores when they're loaded in
 	// Terrain
 	var currentTerrainType;		// current type of floor object being generated
 	var terrainCount;			// number of terrain type to be generated before switching
 	var TERRAIN_WIDTH = 100;	// width of each terrain object, think of it like "block width"
 	var TERRAIN_HEIGHT = 100;	// height of each terrain object, how high from the bottom it goes
 	var terrains = [];			// array to hold terrain objects
-	var TERRAIN_TYPE = {		// "enum" of terrain types
+	var TERRAIN_TYPES = {		// "enum" of terrain types
 		BASE: 0,
 		VOID: 1,
 		LAVA: 2
@@ -66,30 +55,34 @@ game.engine = (function(){
 	var players = [];			// array that holds all 3 players
 	var paladin = {};			// direct reference to the paladin
 	var ranger = {};			// direct reference to the ranger
-	var magi = {};			// direct reference to the magi
+	var magi = {};				// direct reference to the magi
 	// Player classes
 	var PLAYER_CLASSES = {		// enum storing class info
 		PALADIN: {
 			name: "Paladin",
 			health: 125,
 			img: new Image(),
-			width: 85,
-			height: 125,
+			width: 65,
+			height: 150,
 			qDur: 300,
 			qCool: 350,
+			qSnd: "shield.wav",
 			wDur: 24,
-			wCool: 350
+			wCool: 350,
+			wSnd: "arrow.wav"
 		},
 		RANGER: {
 			name: "Ranger",
 			health: 75,
 			img: new Image(),
-			width: 80,
-			height: 125,
+			width: 65,
+			height: 140,
 			qDur: 0,
 			qCool: 5,
+			qSnd: "arrow.wav",
 			wDur: 0,
-			wCool: 300
+			wCool: 300,
+			wSnd: "run.wav"
 		},
 		MAGI: {
 			name: "Magi",
@@ -99,8 +92,10 @@ game.engine = (function(){
 			height: 125,
 			qDur: 0,
 			qCool: 30,
+			qSnd: "fireball.wav",
 			wDur: 200,
-			wCool: 650
+			wCool: 650,
+			wSnd: "iceBridge.wav"
 		}
 	};
 	// Enemies
@@ -162,9 +157,26 @@ game.engine = (function(){
 			velocity: -20
 		}
 	};
+	// Particle Systems
+	var particleSystems = [];
+	var particles = [];
+	var PARTICLE_TYPES = {		// enum storing particle type info
+		FLAME: {
+			collidesTerrain: false,
+			gravity: false,
+			vel: function() { return new Victor(rand(-1, 1), rand(-1, 1)); },
+			img: new Image()
+		},
+		ICE: {
+			collidesTerrain: true,
+			gravity: true,
+			vel: function() { return new Victor(rand(10, 30), rand(-10, -30)); },
+			img: new Image()
+		}
+	}
 	
 	// PHYSICS VARIABLES
-	var GRAVITY = 0.98;			// global gravity
+	var GRAVITY = 60;			// global gravity - this*dt added to velocity.y
 	var jumpFunction = function() { return 1000/60*TERRAIN_WIDTH/globalGameSpeed; };
 	var globalLastTerrain = {};
 	var newUI = undefined;
@@ -178,10 +190,10 @@ game.engine = (function(){
 		ctx = canvas.getContext("2d")
 		
 		// get reference to audio element
-		audioElement = document.querySelector('audio');
+		bgPlayer = document.querySelector('audio');
 		
 		// load default song and title, and play
-		playStream(audioElement);
+		//playStream(bgPlayer);
 		loadAssets();
 		
 		// taps working as jumps 
@@ -189,48 +201,60 @@ game.engine = (function(){
 			mouseDown = true;
 			e.preventDefault();
 			
-			// Switch party order on clicks
-			// loop and cycle if they aren't running already
-			if (currentGameState == GAME_STATE.RUNNING) {
-				for (var i = 0; i < players.length; ++i) {
-					// only cycle living players
-					if (players[i].deathTime == 0) {
-						// left click - cycle left
-						if (e.which == 1)
-							players[i].cycleOrder(1);
-						// right click - cycle right
-						if (e.which == 3)
-							players[i].cycleOrder(-1);
-					}
+			// check for mouse presses on the UI
+			uiClicked = game.windowManager.checkMouse(e);
+			
+			// run game actions if the UI was not clicked
+			if(!uiClicked){
+				// Switch party order on clicks
+				// loop and cycle if they aren't running already
+				if (currentGameState === GAME_STATE.RUNNING) {
+					for (var i = 0; i < players.length; ++i) {
+						// only cycle living players
+						if (players[i].deathTime == 0) {
+							// left click - cycle left
+							if (e.which == 1)
+								players[i].cycleOrder(1);
+							// right click - cycle right
+							if (e.which == 3)
+								players[i].cycleOrder(-1);
+						}
+					};
+					
+					// players are now switching positions
+					currentGameState = GAME_STATE.SWITCHING;
 				};
 				
-				// players are now switching positions
-				currentGameState = GAME_STATE.SWITCHING;
-			};
-			
-			// if the player has died
-			if (currentGameState == GAME_STATE.DEAD) {
-				// restart the game
-				setupGame();
-			};
+				// if the player has died
+				if (currentGameState === GAME_STATE.DEAD) {
+					// restart the game
+					setupGame();
+				};
+			}
 		}.bind(this));
 		// compatibility for touch devices
 		canvas.addEventListener("touchstart", function(e) { 
 			mouseDown = true;
 			e.preventDefault();
 			
-			// if the game is running (player is alive)
-			if (currentGameState == GAME_STATE.RUNNING) {
-				for (var i = 0; i < players.length; ++i) {
-					// loop players and jump after a delay based on party order
-					setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
+			// check for mouse presses on the UI
+			uiClicked = game.windowManager.checkMouse(e);
+			
+			// run game actions if the UI was not clicked
+			if(!uiClicked){
+				// if the game is running (player is alive)
+				if (currentGameState == GAME_STATE.RUNNING) {
+					for (var i = 0; i < players.length; ++i) {
+						// loop players and jump after a delay based on party order
+						setTimeout(players[i].jump, i*jumpFunction(), 15, 1);
+					};
 				};
-			};
-			// if the player has died
-			if (currentGameState == GAME_STATE.DEAD) {
-				// restart the game
-				setupGame();
-			};
+				// if the player has died
+				if (currentGameState == GAME_STATE.DEAD) {
+					// restart the game
+					setupGame();
+				};
+			}
 		}.bind(this));
 		// track mouse position
 		canvas.addEventListener("mousemove", function(e) { mouse = getMouse(e) });
@@ -251,22 +275,17 @@ game.engine = (function(){
 		game.windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
 		game.windowManager.toggleUI("abilityHUD");
 		// ability buttons
-		var qKey = {keyCode: KEY.Q};
-		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(qKey){game.engine.keyPress(qKey);});
+		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q})});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "10pt Audiowide", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability1");
-		
-		var wKey = {keyCode: KEY.W};
-		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(wKey){game.engine.keyPress(wKey);});
+		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "10pt Audiowide", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability2");
-		
-		var eKey = {keyCode: KEY.E};
-		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress(eKey);});
+		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "10pt Audiowide", color: "#0b85a8"});
@@ -289,10 +308,10 @@ game.engine = (function(){
 		players[1] = ranger = new Player(PLAYER_CLASSES.RANGER);
 		players[2] = magi = new Player(PLAYER_CLASSES.MAGI);
 		// one starting enemy
-		enemies[0] = new Enemy(ENEMY_TYPES.GOBLIN);
+		enemies[0] = new Enemy(ENEMY_TYPES.RAT);
 		
 		globalGameSpeed = 8;
-		currentTerrainType = TERRAIN_TYPE.BASE;
+		currentTerrainType = TERRAIN_TYPES.BASE;
 		// generate initial terrain
 		for (var i = 0; i < Math.floor(canvas.width*1.5/TERRAIN_WIDTH); ++i) {
 			terrains[i] = new Terrain(i*TERRAIN_WIDTH);
@@ -308,24 +327,32 @@ game.engine = (function(){
 		background.src = "assets/Wall720.png";
 		baseImg.src = "assets/TileSandstone100.png";
 		lavaImg.src = "assets/lava.png";
-		PLAYER_CLASSES.PALADIN.img.src = "assets/paladin.png";
-		PLAYER_CLASSES.RANGER.img.src = "assets/ranger.png";
-		PLAYER_CLASSES.MAGI.img.src = "assets/magi.png";
+		
+		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
+		PLAYER_CLASSES.RANGER.img.src = "assets/rangerRun.png";
+		PLAYER_CLASSES.MAGI.img.src = "assets/magiRun.png";
+		
+		ENEMY_TYPES.RAT.img.src = "assets/ratRun.png";
+		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
+		
+		PARTICLE_TYPES.FLAME.img.src = "assets/flameParticle.png";
+		PARTICLE_TYPES.ICE.img.src = "assets/iceParticle.png";
 	};
 	
-	// change song
-	function playStream(audioElement){
-		audioElement.src = songSource;
-		audioElement.play();
-		audioElement.volume = 0.2;
+	// play a sound effect
+	function playStream(source, vol) {
+		var player = new Audio("assets/" + source);
+		player.volume = vol;
+		player.play();
 	};
 	
 	// main game tick
 	function update() {
 		// scedule next draw frame
 		animationID = requestAnimationFrame(update);
+		dt = calculateDeltaTime();
 		++time;
 		
 		// start game if on start screen and space or start is being pressed
@@ -344,11 +371,37 @@ game.engine = (function(){
 				fillText(ctx, "Party members respawn after a delay, and they regen health slowly", canvas.width/2, canvas.height/2+40, "20pt Calibri", "white");
 				fillText(ctx, "Get points from surviving and killing enemies", canvas.width/2, canvas.height/2+70, "20pt Calibri", "white");
 				fillText(ctx, "(The enemies are the boxes with pro jumping and flying skills)", canvas.width/2, canvas.height/2+95, "12pt Calibri", "white");
-				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
-				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
+				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
+				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
+				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
 			}
 			return;
 		}
+		
+		// draw high score screen
+		if (currentGameState === GAME_STATE.HIGHSCORE) {
+			ctx.fillStyle = "rgb(20, 20, 20)";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fill();
+			fillText(ctx, "High Scores", canvas.width/2, 100, "30pt Calibri", "white");
+			fillText(ctx, "Press H to return to the main menu", canvas.width/2, 135, "18pt Calibri", "white");
+			
+			// only draw high scores if localStorage is available
+			if (typeof(window.localStorage) != undefined) {
+				// loop through scores
+				for (var i = 0; i < 10; ++i)
+					// draw 0 in place of null scores
+					if (highScores[i] == "null")
+						fillText(ctx, (i+1) + ". 0", canvas.width/2, 200 + i*40, "20pt Calibri", "white");
+					else
+						fillText(ctx, (i+1) + ". " + highScores[i], canvas.width/2, 200 + i*40, "20pt Calibri", "white");
+			}
+			// otherwise, draw an error message
+			else {
+				fillText(ctx, "Your system does not support high score storage", canvas.width/2, canvas.height/2, "18pt Calibri", "white");
+			}
+			return;
+		};
 	 	
 	 	// if paused, bail out of loop
 		if (paused && currentGameState === GAME_STATE.RUNNING) {
@@ -395,6 +448,7 @@ game.engine = (function(){
 			// if player is alive, update
 			if (players[i].deathTime == 0)
 				players[i].update();
+				
 			// if they're dead, increment death counter and respawn if it's been long enough
 			else {
 				++numDead;
@@ -416,9 +470,35 @@ game.engine = (function(){
 		};
 		
 		// if everyone is dead, send game to death screen
-		if (numDead === players.length) {
+		if (numDead === players.length && currentGameState != GAME_STATE.DEAD) {
 			players = [];
 			currentGameState = GAME_STATE.DEAD;
+			
+			// attempt to add the score to the high score list
+			if (typeof(window.localStore) != undefined) {
+				// loop through stored scores
+				for (var i = 0; i < 10; ++i) {
+					// get the stored score
+					var value = window.localStorage.getItem("score"+i);
+					
+					// if no score is there yet, put this one there
+					if (value === null) {
+						window.localStorage.setItem("score"+i, score);
+						return;
+					}
+					
+					// if this score is higher than that one, put this one in and push the rest down
+					if (score > value) {
+						// push rest down
+						for (var ii = 9; ii > i; --ii) {
+							window.localStorage.setItem("score"+ii, window.localStorage.getItem("score"+(ii-1)));
+						}
+						// put this one here
+						window.localStorage.setItem("score"+i, score);
+						return;
+					}
+				}
+			}
 		}
 		
 		// add an enemy if there isn't one
@@ -473,8 +553,8 @@ game.engine = (function(){
 			// check if we've reached the end of this terrain type
 			if (terrainCount <= 0) {
 				// force base ground to generate after each other terrain type
-				if (currentTerrainType != TERRAIN_TYPE.BASE) {
-					currentTerrainType = TERRAIN_TYPE.BASE;
+				if (currentTerrainType != TERRAIN_TYPES.BASE) {
+					currentTerrainType = TERRAIN_TYPES.BASE;
 					// ground patches get shorter as game speeds up
 					terrainCount = Math.max(3, Math.round(15 - globalGameSpeed*.75));
 				}
@@ -488,24 +568,28 @@ game.engine = (function(){
 			}
 		};
 		
+		// update particle systems
+		for (var i = 0; i < particleSystems.length; ++i)
+			particleSystems[i].update();
+		// update all particles
+		for (var i = 0; i < particles.length; ++i)
+			particles[i].update();
+		
 		// draw HUD
-		if(currentGameState != GAME_STATE.DEAD) {
-			game.windowManager.updateAndDraw([]);
-		}
-		
-		// draw score in upper right
 		if (currentGameState != GAME_STATE.DEAD) {
-			var grad = ctx.createLinearGradient(0, 0, 150, 0);
-				grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-				grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-				ctx.fillStyle = grad;
-				ctx.fillRect(canvas.width-150, 0, 150, 50);
-				fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
-				ctx.fill();
-		}
+			game.windowManager.updateAndDraw([]);
 		
+			// draw score in upper right
+			var grad = ctx.createLinearGradient(0, 0, 150, 0);
+			grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+			grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+			ctx.fillStyle = grad;
+			ctx.fillRect(canvas.width-150, 0, 150, 50);
+			fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
+			ctx.fill();
+		}
 		// draw death screen if player has died
-		if (currentGameState == GAME_STATE.DEAD) {
+		else {
 			ctx.save();
 			ctx.fillStyle = "black";
 			ctx.globalAlpha = 0.7;
@@ -513,7 +597,8 @@ game.engine = (function(){
 			ctx.fill();
 			fillText(ctx, "You died.", canvas.width/2, canvas.height/2 - 40, "30pt Calibri", "white");
 			fillText(ctx, "Score: " + score, canvas.width/2, canvas.height/2, "24pt Calibri", "white");
-			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
+			fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
+			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 80, "24pt Calibri", "white");
 			ctx.restore();
 		};
 	};
@@ -524,6 +609,8 @@ game.engine = (function(){
 		this.position = new Victor();
 		// bounding box width and height for game object
 		this.bounds = new Victor();
+		// offset to draw the object's image at, changes it's "point of rotation" in a sense
+		this.offset = new Victor();
 		
 		// MUTATOR: force object's position, within bounds of canvas
 		this.setPosition = function(x, y) {
@@ -574,13 +661,16 @@ game.engine = (function(){
 		this.jump = function(speed, startingPush, force) {
 			// first check if they're on the ground
 			if (this.numJumps < this.maxJumps || force) {
+				// don't increment number of jumps if it's a forced jump
 				if (!force)
 					++this.numJumps;
-			
+				
 				// give the initial thrust
 				this.velocity.y = -speed;
 				this.position.y -= startingPush;
 				this.onGround = false;
+				// force animation to run a bit
+				++this.time;
 			};}.bind(this);
 	};
 	
@@ -611,12 +701,12 @@ game.engine = (function(){
 		
 		// FUNCTION: returns if the terrain is solid
 		this.isSolid = function() {
-			return this.terrainType === TERRAIN_TYPE.BASE || this.iced;
+			return this.terrainType === TERRAIN_TYPES.BASE || this.iced;
 		}
 		
 		// FUNCTION: update terrain position, draw it
 		this.update = function() {
-			// slide terrain object left
+			// slide terrain object left quicker if
 			for (var i = 0; i < 1 + paladin.abilities.W.duration/6; ++i)
 				this.position.x -= globalGameSpeed;
 			
@@ -633,7 +723,7 @@ game.engine = (function(){
 						}
 						
 						// if it's lava, bounce the player and damage them
-						if (this.terrainType === TERRAIN_TYPE.LAVA && players[i].position.y + players[i].bounds.y > this.position.y + this.bounds.y/10) {
+						if (this.terrainType === TERRAIN_TYPES.LAVA && players[i].position.y + players[i].bounds.y > this.position.y + this.bounds.y/10) {
 							players[i].jump(15, 1, true); // forced jump
 							players[i].numJumps = 0; // reset jumps so the forced jump doesn't kill them
 							players[i].damage(10); // do some damage
@@ -645,14 +735,14 @@ game.engine = (function(){
 			ctx.save();
 			switch(this.terrainType) {
 				// void, do nothing
-				case TERRAIN_TYPE.VOID:
+				case TERRAIN_TYPES.VOID:
 					break;
 				// base terrain
-				case TERRAIN_TYPE.BASE:
+				case TERRAIN_TYPES.BASE:
 					ctx.drawImage(baseImg, this.position.x, this.position.y);
 					break;
 				// lava
-				case TERRAIN_TYPE.LAVA:
+				case TERRAIN_TYPES.LAVA:
 					ctx.drawImage(lavaImg, this.position.x, this.position.y);
 					break;
 			};
@@ -677,15 +767,15 @@ game.engine = (function(){
 		this.order = players.length; 	// order in the party - defaults to last
 		this.maxHealth = this.health = classType.health; // this player's health and max health
 		this.deathTime = 0;
-		this.bounds = new Victor(					// the player's bounding width and height
+		this.bounds = new Victor(		// the player's bounding width and height
 			this.classType.width,
 			this.classType.height
 		);
 		this.position = new Victor(		// starting player position
-			275 - players.length*75,
+			275 - players.length*100,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.y-250
 		);
-		this.abilities = {	// stores current cooldown on each skill
+		this.abilities = {				// stores current cooldown on each skill
 			Q: {
 				duration: 0,
 				cooldown: 0,
@@ -711,8 +801,16 @@ game.engine = (function(){
 				this.Q.cooldown = Math.max(0, this.Q.cooldown-1);
 				this.W.cooldown = Math.max(0, this.W.cooldown-1);
 				this.E.cooldown = Math.max(0, this.E.cooldown-1);
+			},
+			reset: function() {
+				this.Q.duration = this.W.duration = this.E.duration =
+				this.Q.cooldown = this.W.cooldown = this.E.cooldown = 0;
 			}
 		};
+		this.time = this.order*20;		// used to control animation timing
+		this.frameWidth = this.classType.img.width/28; // width of 1 frame from the spritesheet
+		this.frameHeight = this.classType.img.height;  // height of 1 frame from the spritesheet
+		this.offset = new Victor(this.frameWidth/-3, this.frameHeight/-8); // player's image offset
 		
 		// FUNCTION: cycle order by a number
 		// can be negative to cycle right
@@ -739,6 +837,17 @@ game.engine = (function(){
 		
 		// FUNCTION: main player object tick
 		this.update = function() {	
+			// increment timing for animation
+			if (this.onGround)
+				this.time = (this.time+0.75) % 28;
+			else
+				if (this.time != 0 && this.time != 13)
+					this.time = Math.round(this.time+1) % 28;
+					
+			// occasionally play running sfx
+			if (this.onGround && time % 15 + this.order == 0)
+				playStream("run.wav", 0.175);
+		
 			// if deathTime is below 0 (they are invulnerable), increase it
 			if (this.deathTime < 0)
 				++this.deathTime;
@@ -751,13 +860,15 @@ game.engine = (function(){
 						--players[i].order;
 				};
 				
+				// reset ability runtimes and cooldowns
+				this.abilities.reset();
+				
 				// start this one's death counter
 				++this.deathTime;
 			};
 			
 			// regen some health and clamp health within 0 and max
-			this.health += 0.02;
-			this.health = clamp(this.health, 0, this.maxHealth);
+			this.health = clamp(this.health + 0.02, 0, this.maxHealth);
 			
 			// decrement timing and ability variables
 			this.abilities.decrement();
@@ -766,16 +877,16 @@ game.engine = (function(){
 			this.order = clamp(this.order, 0, players.length-1);
 			
 			// try to move towards where it should be in the running order
-			if (this.position.x != 275 - this.order*75) {
+			if (this.position.x != 275 - this.order*100) {
 				// only try to move if its above the terrain level
 				if (this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
 					// if it's close, round off
-					if (Math.abs(this.position.x - (275 - this.order*75)) <= 3) {
-						this.position.x = 275 - this.order*75
+					if (Math.abs(this.position.x - (275 - this.order*100)) <= 3) {
+						this.position.x = 275 - this.order*100;
 					}
 					// otherwise, move towards where it should be
 					else {
-						this.position.x -= Math.sign(this.position.x - (275 - this.order*75))*5;
+						this.position.x -= Math.sign(this.position.x - (275 - this.order*100))*5;
 					};
 				};
 					
@@ -783,7 +894,7 @@ game.engine = (function(){
 				if (currentGameState == GAME_STATE.SWITCHING) {
 					var allSwitched = true;
 					for (var i = 0; i < players.length; ++i)
-						if (players[i].position.x != 275 - players[i].order*75 && players[i].deathTime == 0)
+						if (players[i].position.x != 275 - players[i].order*100 && players[i].deathTime == 0)
 							allSwitched = false;
 							
 					if (allSwitched)
@@ -810,7 +921,7 @@ game.engine = (function(){
 			// if off ground, update physics and check if on ground
 			if (!this.onGround) {		
 				// update phsyics
-				this.velocity.y += GRAVITY
+				this.velocity.y += GRAVITY*dt
 					
 				// loop through velocity
 				for (var i = 0; i < Math.abs(this.velocity.y); ++i) {
@@ -865,13 +976,14 @@ game.engine = (function(){
 		// FUNCTION: main player draw call
 		this.draw = function() {
 			ctx.save();
-			// draw the player's actualy image
-			ctx.drawImage(this.classType.img, this.position.x, this.position.y);
-			
+			// draw the player's actual image from its spritesheet
+			ctx.drawImage(this.classType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
+				
 			// if the one drawing is the paladin, draw the shield if it's up
 			if (this.classType == PLAYER_CLASSES.PALADIN && this.abilities.Q.duration > 0) {
 				// prepare fill style
 				ctx.fillStyle = "rgba(0, 255, 255, " + (this.abilities.Q.duration/100) + ")";
+				
 				// loop players
 				for (var i = 0; i < players.length; ++i) {
 					// draw shield in front of first player
@@ -900,46 +1012,47 @@ game.engine = (function(){
 		/* ATTACKING */
 		// FUNCTION: 1st attack ('Q')
 		this.baseAttack = function() {
-			switch(this.classType) {
-				case PLAYER_CLASSES.PALADIN:
-					// if shield is off cooldown, activate it
-					if (this.abilities.Q.cooldown === 0) {
+			// if the ability is off cooldown, activate it
+			if (this.abilities.Q.cooldown === 0) {
+				// play the ability's sound effect
+				playStream(this.classType.qSnd, 0.2);
+				
+				switch(this.classType) {
+					case PLAYER_CLASSES.PALADIN:
+						// activate the shield
 						this.abilities.Q.duration = this.abilities.Q.maxDur;
 						this.abilities.Q.cooldown = this.abilities.Q.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.RANGER:
-					// shoot an arrow towards the first enemy
-					if (this.abilities.Q.cooldown === 0) {
+						break;
+					case PLAYER_CLASSES.RANGER:
+						// shoot an arrow towards the first enemy
 						projectiles.push(new Projectile(this.position.x+this.bounds.x/2, this.position.y+this.bounds.y/2, enemies[0], PROJECTILE_TYPES.ARROW, false));
 						this.abilities.Q.duration = this.abilities.Q.maxDur;
 						this.abilities.Q.cooldown = this.abilities.Q.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.MAGI:
-					// shoot a fireball
-					if (this.abilities.Q.cooldown === 0) {
+						break;
+					case PLAYER_CLASSES.MAGI:
+						// shoot a fireball
 						projectiles.push(new Projectile(this.position.x+this.bounds.x/2, this.position.y+this.bounds.y/2, enemies[0], PROJECTILE_TYPES.MAGIFIREBALL, false));
 						this.abilities.Q.duration = this.abilities.Q.maxDur;
 						this.abilities.Q.cooldown = this.abilities.Q.maxCool;
-					}
-					break;
+						break;
+				};
 			};
 		};
 		
 		// FUNCTION: 2nd attack ('W')
 		this.midAttack = function() {
-			switch(this.classType) {
-				case PLAYER_CLASSES.PALADIN:
-					// if shield is off cooldown, activate it
-					if (this.abilities.W.cooldown === 0) {
+			// if the ability is off cooldown, activate it
+			if (this.abilities.W.cooldown === 0) {
+				// play the ability's sound effect
+				playStream(this.classType.wSnd, 0.2);
+				
+				switch(this.classType) {
+					case PLAYER_CLASSES.PALADIN:
+						// dash forward
 						this.abilities.W.duration = this.abilities.W.maxDur;
 						this.abilities.W.cooldown = this.abilities.W.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.RANGER:
-					// shoot an arrow towards the first enemy
-					if (this.abilities.W.cooldown === 0) {
+						break;
+					case PLAYER_CLASSES.RANGER:
 						// loop players and force a jump after a delay based on party order
 						for (var i = 0; i < players.length; ++i) {
 							// only schedule jumps for living players
@@ -949,18 +1062,19 @@ game.engine = (function(){
 						};
 						this.abilities.W.duration = this.abilities.W.maxDur;
 						this.abilities.W.cooldown = this.abilities.W.maxCool;
-					}
-					break;
-				case PLAYER_CLASSES.MAGI:
-					// ice over terrains
-					if (this.abilities.W.cooldown === 0 && this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
-						for (var i = 0; i < terrains.length; ++i) {
-							terrains[i].iced = true;
+						break;
+					case PLAYER_CLASSES.MAGI:
+						// ice over terrains
+						if (this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
+							for (var i = 0; i < terrains.length; ++i) {
+								terrains[i].iced = true;
+								particleSystems.push(new ParticleSystem(this, PARTICLE_TYPES.ICE, 30, -1, 0.1));
+							}
+							this.abilities.W.duration = this.abilities.W.maxDur;
+							this.abilities.W.cooldown = this.abilities.W.maxCool;
 						}
-						this.abilities.W.duration = this.abilities.W.maxDur;
-						this.abilities.W.cooldown = this.abilities.W.maxCool;
-					}
-					break;
+						break;
+				};
 			};
 		};
 	};
@@ -993,6 +1107,15 @@ game.engine = (function(){
 				this.velocity = Victor().subtract(this.position);
 		else
 			this.velocity = Victor().subtract(this.position);
+			
+		// attach a particle system based on its projectile type
+		switch (this.projType) {
+			case PROJECTILE_TYPES.FIREBALL:
+			case PROJECTILE_TYPES.MAGIFIREBALL:
+				this.system = new ParticleSystem(this, PARTICLE_TYPES.FLAME, -1, 10, 20);
+				particleSystems.push(this.system);
+				break;
+		};
 		
 		// give an upwards thrust if it's affected by gravity
 		if (this.gravity)
@@ -1004,6 +1127,8 @@ game.engine = (function(){
 			if (this.position.y > canvas.height*2 || this.position.x < 0 || this.position.x > canvas.width) {
 				// delete this one
 				projectiles.splice(projectiles.indexOf(this), 1);
+				particleSystems.splice(particleSystems.indexOf(this.system), 1);
+				return;
 			};
 			
 			// whether the projectile has collided with something
@@ -1090,7 +1215,7 @@ game.engine = (function(){
 			if (!collided) {		
 				// update phsyics
 				if (this.gravity)
-					this.velocity.y += GRAVITY
+					this.velocity.y += GRAVITY*dt
 				this.position.x += this.velocity.x;
 				this.position.y += this.velocity.y;
 			}
@@ -1105,6 +1230,7 @@ game.engine = (function(){
 				}
 			
 				// delete this one
+				particleSystems.splice(particleSystems.indexOf(this.system), 1);
 				projectiles.splice(projectiles.indexOf(this), 1);
 			};
 				
@@ -1128,6 +1254,7 @@ game.engine = (function(){
 		this.enemyType = enemyType;		// what type of enemy this is
 		this.maxJumps = 3;				// max number of jumps they can do in sequence
 		this.color = this.enemyType.color; // color enemy will draw at if they have no image
+		this.time = 0; // controls sprite animation timing
 		this.health = this.maxHealth = this.enemyType.health; // get health and max health of this enemy type
 		this.bounds = new Victor(
 			this.enemyType.width,
@@ -1137,6 +1264,10 @@ game.engine = (function(){
 			canvas.width + this.bounds.x*1.5,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.y*2
 		);
+		this.frameWidth = this.enemyType.img.width/28; // width of 1 frame from the spritesheet
+		this.frameHeight = this.enemyType.img.height;  // height of 1 frame from the spritesheet
+		this.offset = new Victor(0, this.frameHeight/-4); // player's image offset
+		
 		// set target differently depending on AI
 		switch (this.enemyType.AI) {
 			// if they're flying, they home to the top right
@@ -1162,6 +1293,13 @@ game.engine = (function(){
 		
 		// FUNCTION: main enemy object tick
 		this.update = function() {
+			// increment timing for animation
+			if (this.onGround)
+				this.time = (this.time+0.75) % 28;
+			else
+				if (this.time != 0 && this.time != 13)
+					this.time = Math.round(this.time+1) % 28;
+					
 			// kill enemy if off screen or dead
 			if (this.position.y > canvas.height*2 || this.health <= 0) {
 				// award points equal to its starting health
@@ -1226,7 +1364,7 @@ game.engine = (function(){
 			
 				// update phsyics
 				if (!this.onGround)
-					this.velocity.y += GRAVITY
+					this.velocity.y += GRAVITY*dt
 			}
 			
 			// loop through velocity
@@ -1301,7 +1439,11 @@ game.engine = (function(){
 		this.draw = function() {
 			ctx.save();
 			ctx.fillStyle = this.color;
-			ctx.fillRect(this.position.x, this.position.y, this.bounds.x, this.bounds.y);
+			// rats have completed art, so draw their sprite from their sheet
+			if (this.enemyType === ENEMY_TYPES.RAT)
+				ctx.drawImage(this.enemyType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
+			else
+				ctx.fillRect(this.position.x, this.position.y, this.bounds.x, this.bounds.y);
 			
 			// draw health above head
 			ctx.fillStyle = "red";
@@ -1312,6 +1454,131 @@ game.engine = (function(){
 			ctx.restore();
 		};
 	};
+ 
+	// CLASS: particle system
+	function ParticleSystem(root, particleType, lifetime, particleLifetime, particlesPerFrame) {
+		// assign starting variables
+		this.root = root;						// the object this is linked to
+		this.position = root.position.clone();	// system's position
+		this.time = 0;							// system's time lived
+		
+		// update particle system
+		this.update = function() {
+			// delete this if its root is gone
+			if (this.root == undefined) {
+				particleSystems.splice(particleSystems.indexOf(this), 1);
+				return;
+			}
+		
+			// stick to the root object
+			this.position = root.position.clone().add(root.bounds.clone().divide(Victor(2, 2)));
+		
+			// attempt to create new particles
+			if (particlesPerFrame >= 1) {
+				for (var i = 0; i < particlesPerFrame; ++i)
+					particles.push(new Particle(this, particleType, particleLifetime));
+			}
+			// only a chance to create one if <1 per frame
+			else if (Math.random() < particlesPerFrame)
+				particles.push(new Particle(this, particleType, particleLifetime));
+			
+			// increment time lived
+			++this.time;
+			// delete this system if its time lived has surpassed its lifetime
+			if (this.time > lifetime && lifetime > 0) {
+				particleSystems.splice(particleSystems.indexOf(this), 1);
+			}
+		}
+	}
+	
+	// CLASS: particle
+	function Particle(parent, particleType, lifetime) {
+		// inherits from MobileGameObject
+		MobileObject.call(this);
+	
+		// assign starting variables
+		this.particleType = particleType;	// what type of particle this is
+		this.deathtime = 0; 				// used to kill particles if they don't die naturally
+		this.lifetime = lifetime;
+		this.position = parent.position;
+		this.velocity = this.particleType.vel();
+		this.bounds = new Victor(3, 3);
+		this.time = 0;
+		
+		// update particle
+		this.update = function() {
+			// affected by gravity based on particle type
+			if (this.particleType.gravity)
+				this.velocity.y += GRAVITY*dt;
+		
+			// if particle type collides with terrain, do pixel collisions
+			if (this.particleType.collidesTerrain) {
+				// loop through velocity
+				for (var i = 0; i < this.velocity.length(); ++i) {	
+				// distance we'll move along each axis this loop
+				var moveDistX = 0; var moveDistY = 0;
+				// move distance is 1, or the decimal remainder of velocity on the last loop
+				// only actually update the moveDist if it would be > 0
+				if (Math.abs(this.velocity.x) - i > 0)
+					moveDistX = (Math.abs(this.velocity.x) - i < 1 ? Math.abs(this.velocity.x) - i : 1) * Math.sign(this.velocity.x);
+				// only do vertical target tracking if they're a flying enemy
+				if (Math.abs(this.velocity.y) - i > 0)
+					moveDistY = (Math.abs(this.velocity.y) - i < 1 ? Math.abs(this.velocity.y) - i : 1) * Math.sign(this.velocity.y);
+				
+				// variable to store if its safe to move
+				var positionSafe = true;
+				
+				// loop through terrain objects and check if we can move down
+				for (var ii = 0; ii < terrains.length; ++ii) {
+					// get currently looped terrain object
+					var currentTerrain = terrains[ii];
+					
+					// check is position we'd move to is safe (above terrain)
+					// terrain we're checking is below is
+					if (this.position.x < currentTerrain.position.x + TERRAIN_WIDTH && this.position.x + this.bounds.x + moveDistX > currentTerrain.position.x) {
+						// terrain below us is solid ground and we'd be inside it if we moved down
+						if (this.position.y + this.bounds.y + moveDistY > currentTerrain.position.y && currentTerrain.isSolid()) {
+							// it's not safe to move
+							positionSafe = false;
+							break;
+						};
+					};
+				};
+				
+				// if we're safe to move, shift down
+				if (positionSafe || (this.position.y + this.bounds.y > currentTerrain.position.y)) {
+					this.position.x += moveDistX;
+					this.position.y += moveDistY;
+				}
+				// otherwise, bounce
+				else {
+					this.velocity.y *= -0.85;
+					break;
+				};
+			}
+			}
+			// otherwise, just move
+			else
+				this.position.add(this.velocity);
+			
+			// increment death timer if the particle is barely moving
+			if (this.velocity.length() < 0.1)
+				++this.deathTime;
+			// increment time lived
+			++this.time;
+			
+			// delete this particle if its time lived has surpassed its lifetime, if it has been still for 100 ticks,
+			// or if it has moved offscreen
+			if ((this.time > this.lifetime && this.lifetime > 0) || this.deathTime > 100 ||
+				 this.position.x < 0 || this.position.x > canvas.width || this.position.y < 0 || this.position.y > canvas.height) {
+				particles.splice(particles.indexOf(this), 1);
+				return;
+			}
+				
+			// draw based on particle type
+			ctx.drawImage(this.particleType.img, this.position.x, this.position.y);
+		};
+	}
  
 	// PAUSE FUNCTION: pauses the game
 	function pauseGame() {
@@ -1353,7 +1620,7 @@ game.engine = (function(){
 			keys[e.keyCode] = false;
 		
 		// spacebar - jump!
-		if (e.keyCode == KEY.SPACE) {
+		if (e.keyCode === KEY.SPACE) {
 			// loop players and jump after a delay based on party order
 			for (var i = 0; i < players.length; ++i) {
 				// only schedule jumps for living players
@@ -1368,7 +1635,7 @@ game.engine = (function(){
 		};
 		
 		// q - make first player trigger Q ability
-		if (e.keyCode == KEY.Q && keys[e.keyCode] == false) {
+		if (e.keyCode === KEY.Q && keys[e.keyCode] == false) {
 			// loop players and only initiate ability on one at order 0
 			for (var i = 0; i < players.length; ++i) {
 				if (players[i].order == 0  && players[i].deathTime == 0)
@@ -1377,7 +1644,7 @@ game.engine = (function(){
 		};
 		
 		// w - make first player trigger W ability
-		if (e.keyCode == KEY.W && keys[e.keyCode] == false) {
+		if (e.keyCode === KEY.W && keys[e.keyCode] == false) {
 			// loop players and only initiate ability on one at order 0
 			for (var i = 0; i < players.length; ++i) {
 				if (players[i].order == 0  && players[i].deathTime == 0)
@@ -1386,13 +1653,33 @@ game.engine = (function(){
 		};
 		
 		// p - toggle game paused
-		if (e.keyCode == KEY.P) {
+		if (e.keyCode === KEY.P) {
 			// check if paused, and toggle it
 			if (paused)
 				resumeGame();
 			else
 				pauseGame();
 		};
+		
+		// h - view high scores if on main or death screen
+		if (e.keyCode === KEY.H) {
+			// return to home screen after viewing high scores
+			if (currentGameState === GAME_STATE.HIGHSCORE) {
+				currentGameState = GAME_STATE.START;
+			}
+			else
+			if (currentGameState === GAME_STATE.DEAD || currentGameState === GAME_STATE.START) {
+				currentGameState = GAME_STATE.HIGHSCORE;
+				
+				// load in the scores from local storage
+				highScores = [];
+				for (var i = 0; i < 10; ++i) {
+					if (typeof(window.localStorage) != undefined) {
+						highScores[i] = window.localStorage.getItem("score"+i);
+					}
+				}
+			}
+		}
 		
 		// set the keycode to true
 		// we do this last so we can check if this is the first tick it's pressed
@@ -1408,11 +1695,21 @@ game.engine = (function(){
 			e.preventDefault();
 			 
 			// if the player has died
-			if (currentGameState == GAME_STATE.DEAD) {
+			if (currentGameState === GAME_STATE.DEAD) {
 				// restart the game
 				currentGameState = GAME_STATE.START;
 			};
 		};
+	};
+	
+	// FUNCTION: calculate the delta time, used for animation and physics
+	function calculateDeltaTime() {
+		var now, fps;
+		now = (+new Date); 
+		fps = 1000 / (now - lastTime);
+		fps = clamp(fps, 12, 60);
+		lastTime = now; 
+		return 1/fps;
 	};
 	
 	// return public interface for engine module

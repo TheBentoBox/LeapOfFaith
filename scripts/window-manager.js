@@ -40,22 +40,26 @@ game.windowManager = (function(){
 		var mouse = getMouse(e);	// mouse position
 		var elem;					// UI element
 		var but;					// button
+		var clicked = false;
 		// check if any UI elements were clicked
 		for(var i=0; i < uiElements.length; i++){
 			elem = uiElements[i];
-			if(mouse.x >= elem.position.x && mouse.x <= elem.position.x + elem.size.x && mouse.y >= elem.position.y && mouse.y <= elem.position.y + elem.size.y){
+			//console.log("Element bounds: " + elem.position.x + ", " + elem.position.y + ", " + (elem.position.x + elem.size.x) + ", " + (elem.position.y + elem.size.y));
+			if(mouse.position.x >= elem.position.x && mouse.position.x <= (elem.position.x + elem.size.x) && mouse.position.y >= elem.position.y && mouse.position.y <= (elem.position.y + elem.size.y)){
+				clicked = true;
 				// check if any buttons were clicked inside the clicked element
 				for(var j=0; j < uiElements[i].buttons.length; j++){
 					but = elem.buttons[j];
-					if(mouse.x >= elem.position.x + but.offset.x && mouse.x <= elem.position.x + but.offset.x + but.size.x && mouse.y >= elem.position.y + but.offset.y && mouse.y <= elem.position.y + but.offset.y + but.size.y){
+					if(mouse.position.x >= elem.position.x + but.offset.x && mouse.position.x <= elem.position.x + but.offset.x + but.size.x && mouse.position.y >= elem.position.y + but.offset.y && mouse.position.y <= elem.position.y + but.offset.y + but.size.y){
 						// call click event of clicked button
 						but.onClick();
-						return;
+						return clicked;
 					}
 				}
 			}
 		}
-		// TODO: send mouse event down to engine
+		//console.log(clicked);
+		return clicked;
 	}
 	
 	// FUNCTION: make new UI object
@@ -549,6 +553,7 @@ game.windowManager = (function(){
 	return {
 		init: init,
 		updateAndDraw: updateAndDraw,
+		checkMouse: checkMouse,
 		makeUI: makeUI,
 		makeButton: makeButton,
 		makeBar: makeBar,
