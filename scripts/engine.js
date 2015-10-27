@@ -308,7 +308,7 @@ game.engine = (function(){
 		players[1] = ranger = new Player(PLAYER_CLASSES.RANGER);
 		players[2] = magi = new Player(PLAYER_CLASSES.MAGI);
 		// one starting enemy
-		enemies[0] = new Enemy(ENEMY_TYPES.GOBLIN);
+		enemies[0] = new Enemy(ENEMY_TYPES.RAT);
 		
 		globalGameSpeed = 8;
 		currentTerrainType = TERRAIN_TYPES.BASE;
@@ -331,6 +331,8 @@ game.engine = (function(){
 		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
 		PLAYER_CLASSES.RANGER.img.src = "assets/rangerRun.png";
 		PLAYER_CLASSES.MAGI.img.src = "assets/magiRun.png";
+		
+		ENEMY_TYPES.RAT.img.src = "assets/ratRun.png";
 		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
@@ -478,7 +480,6 @@ game.engine = (function(){
 				for (var i = 0; i < 10; ++i) {
 					// get the stored score
 					var value = window.localStorage.getItem("score"+i);
-					console.log(value);
 					
 					// if no score is there yet, put this one there
 					if (value === null) {
@@ -1253,6 +1254,7 @@ game.engine = (function(){
 		this.enemyType = enemyType;		// what type of enemy this is
 		this.maxJumps = 3;				// max number of jumps they can do in sequence
 		this.color = this.enemyType.color; // color enemy will draw at if they have no image
+		this.time = 0; // controls sprite animation timing
 		this.health = this.maxHealth = this.enemyType.health; // get health and max health of this enemy type
 		this.bounds = new Victor(
 			this.enemyType.width,
@@ -1262,6 +1264,10 @@ game.engine = (function(){
 			canvas.width + this.bounds.x*1.5,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.y*2
 		);
+		this.frameWidth = this.enemyType.img.width/28; // width of 1 frame from the spritesheet
+		this.frameHeight = this.enemyType.img.height;  // height of 1 frame from the spritesheet
+		this.offset = new Victor(0, this.frameHeight/-4); // player's image offset
+		
 		// set target differently depending on AI
 		switch (this.enemyType.AI) {
 			// if they're flying, they home to the top right
@@ -1287,6 +1293,13 @@ game.engine = (function(){
 		
 		// FUNCTION: main enemy object tick
 		this.update = function() {
+			// increment timing for animation
+			if (this.onGround)
+				this.time = (this.time+0.75) % 28;
+			else
+				if (this.time != 0 && this.time != 13)
+					this.time = Math.round(this.time+1) % 28;
+					
 			// kill enemy if off screen or dead
 			if (this.position.y > canvas.height*2 || this.health <= 0) {
 				// award points equal to its starting health
@@ -1426,7 +1439,11 @@ game.engine = (function(){
 		this.draw = function() {
 			ctx.save();
 			ctx.fillStyle = this.color;
-			ctx.fillRect(this.position.x, this.position.y, this.bounds.x, this.bounds.y);
+			// rats have completed art, so draw their sprite from their sheet
+			if (this.enemyType === ENEMY_TYPES.RAT)
+				ctx.drawImage(this.enemyType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
+			else
+				ctx.fillRect(this.position.x, this.position.y, this.bounds.x, this.bounds.y);
 			
 			// draw health above head
 			ctx.fillStyle = "red";
