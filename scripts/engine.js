@@ -9,7 +9,8 @@ game.engine = (function(){
 	
 	/* VARIABLES */
 	// SCREEN AND AUDIO VARIABLES
-	var bgPlayer;				// audio player reference for background audio
+	var bgAudio;				// audio player reference for background audio
+	var sfxPlayer;				// audio player reference for sound effects
 	var canvas,ctx;				// canvas references
 	var mouseX, mouseY;			// mouse coordinates
 	var animationID;			// stores animation ID of animation frame
@@ -76,7 +77,7 @@ game.engine = (function(){
 			health: 75,
 			img: new Image(),
 			width: 65,
-			height: 140,
+			height: 145,
 			qDur: 0,
 			qCool: 5,
 			qSnd: "arrow.wav",
@@ -89,7 +90,7 @@ game.engine = (function(){
 			health: 100,
 			img: new Image(),
 			width: 65,
-			height: 125,
+			height: 130,
 			qDur: 0,
 			qCool: 30,
 			qSnd: "fireball.wav",
@@ -101,19 +102,17 @@ game.engine = (function(){
 	// Enemies
 	var enemies = [];
 	var ENEMY_TYPES = {
-		GOBLIN: {
-			name: "Goblin",
+		GATOR: {
+			name: "GATOR",
 			health: 75,
-			color: "rgb(50, 125, 0)",
 			img: new Image(),
-			width: 85,
-			height: 85,
+			width: 100,
+			height: 60,
 			AI: "running"
 		},
 		RAT: {
 			name: "Rat",
 			health: 55,
-			color: "rgb(127, 127, 127)",
 			img: new Image(),
 			width: 100,
 			height: 50,
@@ -122,7 +121,6 @@ game.engine = (function(){
 		BAT: {
 			name: "Bat",
 			health: 50,
-			color: "rgb(75, 75, 75)",
 			img: new Image(),
 			width: 85,
 			height: 50,
@@ -190,10 +188,10 @@ game.engine = (function(){
 		ctx = canvas.getContext("2d")
 		
 		// get reference to audio element
-		bgPlayer = document.querySelector('#bgAudio');
+		bgAudio = document.querySelector('#bgAudio');
 		
 		// load default song and title, and play
-		//playStream(bgPlayer);
+		//playStream(sfxPlayer);
 		loadAssets();
 		
 		// taps working as jumps 
@@ -269,7 +267,7 @@ game.engine = (function(){
 		
 		// create starting UI
 		// HUD box for current abilities
-		game.windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
+		game.windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/6, canvas.height/8);
 		// set ability box to sandstone colors
 		game.windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
 		game.windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
@@ -285,11 +283,11 @@ game.engine = (function(){
 		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability2");
-		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		game.windowManager.toggleButton("abilityHUD", "ability3");
+		//game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
+		//game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
+		//game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
+		//game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		//game.windowManager.toggleButton("abilityHUD", "ability3");
 		
 		// BEGIN main game tick
 		update();
@@ -308,7 +306,7 @@ game.engine = (function(){
 		players[1] = ranger = new Player(PLAYER_CLASSES.RANGER);
 		players[2] = magi = new Player(PLAYER_CLASSES.MAGI);
 		// one starting enemy
-		enemies[0] = new Enemy(ENEMY_TYPES.RAT);
+		enemies[0] = new Enemy(ENEMY_TYPES.GATOR);
 		
 		globalGameSpeed = 8;
 		currentTerrainType = TERRAIN_TYPES.BASE;
@@ -336,6 +334,8 @@ game.engine = (function(){
 		PLAYER_CLASSES.MAGI.img.src = "assets/magiRun.png";
 		
 		ENEMY_TYPES.RAT.img.src = "assets/ratRun.png";
+		ENEMY_TYPES.BAT.img.src = "assets/batRun.png";
+		ENEMY_TYPES.GATOR.img.src = "assets/gatorRun.png";
 		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
@@ -377,7 +377,7 @@ game.engine = (function(){
 				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
 				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
 				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
-				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
+				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design & Audio: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
 			}
 			return;
 		}
@@ -508,7 +508,7 @@ game.engine = (function(){
 		// add an enemy if there isn't one
 		if (enemies.length === 0) {
 			switch(Math.round(rand(0, 2))) {
-				case 0: enemies.push(new Enemy(ENEMY_TYPES.GOBLIN));
+				case 0: enemies.push(new Enemy(ENEMY_TYPES.GATOR));
 					break;
 				case 1: enemies.push(new Enemy(ENEMY_TYPES.RAT));
 					break;
@@ -1257,7 +1257,6 @@ game.engine = (function(){
 		/* VARIABLES */
 		this.enemyType = enemyType;		// what type of enemy this is
 		this.maxJumps = 3;				// max number of jumps they can do in sequence
-		this.color = this.enemyType.color; // color enemy will draw at if they have no image
 		this.time = 0; // controls sprite animation timing
 		this.health = this.maxHealth = this.enemyType.health; // get health and max health of this enemy type
 		this.bounds = new Victor(
@@ -1270,7 +1269,8 @@ game.engine = (function(){
 		);
 		this.frameWidth = this.enemyType.img.width/28; // width of 1 frame from the spritesheet
 		this.frameHeight = this.enemyType.img.height;  // height of 1 frame from the spritesheet
-		this.offset = new Victor(0, this.frameHeight/-4); // player's image offset
+		this.offset = new Victor(this.frameWidth/-4, this.frameHeight/-4); // enemys's image offset
+		//if (this.enemyType != ENEMY_TYPES.RAT) this.offset.x = this.frameWidth/-4; // bat and gator images displays more to the left
 		
 		// set target differently depending on AI
 		switch (this.enemyType.AI) {
@@ -1298,7 +1298,7 @@ game.engine = (function(){
 		// FUNCTION: main enemy object tick
 		this.update = function() {
 			// increment timing for animation
-			if (this.onGround)
+			if (this.onGround || this.enemyType.AI === "flying")
 				this.time = (this.time+0.75) % 28;
 			else
 				if (this.time != 0 && this.time != 13)
@@ -1442,12 +1442,8 @@ game.engine = (function(){
 		// FUCNTION: main enemy draw call
 		this.draw = function() {
 			ctx.save();
-			ctx.fillStyle = this.color;
 			// rats have completed art, so draw their sprite from their sheet
-			if (this.enemyType === ENEMY_TYPES.RAT)
-				ctx.drawImage(this.enemyType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
-			else
-				ctx.fillRect(this.position.x, this.position.y, this.bounds.x, this.bounds.y);
+			ctx.drawImage(this.enemyType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
 			
 			// draw health above head
 			ctx.fillStyle = "red";
@@ -1590,6 +1586,7 @@ game.engine = (function(){
 		// prevents multiple redraws of pause screen
 		if (!paused) {
 			paused = true;
+			bgAudio.pause();
 			
 			// stop the animation loop if the player is alive
 			if (currentGameState == GAME_STATE.RUNNING)
@@ -1600,6 +1597,7 @@ game.engine = (function(){
 			ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			fillText(ctx, "Paused", canvas.width/2, canvas.height/2, "30pt Calibri", "white");
+			fillText(ctx, "Press P to unpause", canvas.width/2, canvas.height/2+40, "24pt Calibri", "white");
 			ctx.restore();
 		};
 	};
@@ -1607,6 +1605,7 @@ game.engine = (function(){
 	// RESUME FUNCTION: resumes the game
 	function resumeGame() {
 		paused = false;
+		bgAudio.play();
 		
 		// forcibly end animation loop in case it's running
 		// only end the loop if the player is alive
