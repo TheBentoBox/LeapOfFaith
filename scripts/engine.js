@@ -367,7 +367,7 @@ game.engine = (function(){
 				ctx.fillStyle = "rgb(20, 20, 20)";
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
 				ctx.fill();
-				fillText(ctx, "Welcome to Leap of Faith", canvas.width/2, canvas.height/2-100, "30pt Calibri", "white");
+				fillText(ctx, "Welcome to Leap of Faith", canvas.width/2, canvas.height/2-100, "30pt 'Uncial Antiqua'", "white");
 				fillText(ctx, "Left and right click or arrows to cycle party members left or right", canvas.width/2, canvas.height/2-50, "20pt Calibri", "white");
 				fillText(ctx, "Press space to jump. You can double jump.", canvas.width/2, canvas.height/2-20, "20pt Calibri", "white");
 				fillText(ctx, "Press Q or W to activate the party leader's primary/secondary abilities", canvas.width/2, canvas.height/2+10, "20pt Calibri", "white");
@@ -387,7 +387,7 @@ game.engine = (function(){
 			ctx.fillStyle = "rgb(20, 20, 20)";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			ctx.fill();
-			fillText(ctx, "High Scores", canvas.width/2, 100, "30pt Calibri", "white");
+			fillText(ctx, "High Scores", canvas.width/2, 100, "30pt 'Uncial Antiqua'", "white");
 			fillText(ctx, "Press H to return to the main menu", canvas.width/2, 135, "18pt Calibri", "white");
 			
 			// only draw high scores if localStorage is available
@@ -599,7 +599,7 @@ game.engine = (function(){
 			ctx.globalAlpha = 0.7;
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			ctx.fill();
-			fillText(ctx, "You died.", canvas.width/2, canvas.height/2 - 40, "30pt Calibri", "white");
+			fillText(ctx, "You died.", canvas.width/2, canvas.height/2 - 40, "30pt 'Uncial Antiqua'", "white");
 			fillText(ctx, "Score: " + score, canvas.width/2, canvas.height/2, "24pt Calibri", "white");
 			fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
 			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 80, "24pt Calibri", "white");
