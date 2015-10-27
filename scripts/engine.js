@@ -190,7 +190,7 @@ game.engine = (function(){
 		ctx = canvas.getContext("2d")
 		
 		// get reference to audio element
-		bgPlayer = document.querySelector('audio');
+		bgPlayer = document.querySelector('#bgAudio');
 		
 		// load default song and title, and play
 		//playStream(bgPlayer);
@@ -278,17 +278,17 @@ game.engine = (function(){
 		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q})});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability1");
 		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability2");
 		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
 		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "10pt Audiowide", color: "#0b85a8"});
+		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 		game.windowManager.toggleButton("abilityHUD", "ability3");
 		
 		// BEGIN main game tick
@@ -320,6 +320,9 @@ game.engine = (function(){
 		// starting variables
 		currentTerrainType = Math.round(Math.random()+1);
 		terrainCount = 2;
+		
+		// start music loop
+		bgAudio.play();
 	};
 	
 	// Load game assets (images and sounds)
@@ -365,7 +368,7 @@ game.engine = (function(){
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
 				ctx.fill();
 				fillText(ctx, "Welcome to Leap of Faith", canvas.width/2, canvas.height/2-100, "30pt Calibri", "white");
-				fillText(ctx, "Left or right click to cycle party members left or right", canvas.width/2, canvas.height/2-50, "20pt Calibri", "white");
+				fillText(ctx, "Left and right click or arrows to cycle party members left or right", canvas.width/2, canvas.height/2-50, "20pt Calibri", "white");
 				fillText(ctx, "Press space to jump. You can double jump.", canvas.width/2, canvas.height/2-20, "20pt Calibri", "white");
 				fillText(ctx, "Press Q or W to activate the party leader's primary/secondary abilities", canvas.width/2, canvas.height/2+10, "20pt Calibri", "white");
 				fillText(ctx, "Party members respawn after a delay, and they regen health slowly", canvas.width/2, canvas.height/2+40, "20pt Calibri", "white");
@@ -374,6 +377,7 @@ game.engine = (function(){
 				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
 				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
 				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
+				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
 			}
 			return;
 		}
