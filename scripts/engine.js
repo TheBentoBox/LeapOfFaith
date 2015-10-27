@@ -75,8 +75,8 @@ game.engine = (function(){
 			name: "Ranger",
 			health: 75,
 			img: new Image(),
-			width: 80,
-			height: 125,
+			width: 65,
+			height: 140,
 			qDur: 0,
 			qCool: 5,
 			qSnd: "arrow.wav",
@@ -329,8 +329,8 @@ game.engine = (function(){
 		lavaImg.src = "assets/lava.png";
 		
 		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
-		PLAYER_CLASSES.RANGER.img.src = "assets/ranger.png";
-		PLAYER_CLASSES.MAGI.img.src = "assets/magi.png";
+		PLAYER_CLASSES.RANGER.img.src = "assets/rangerRun.png";
+		PLAYER_CLASSES.MAGI.img.src = "assets/magiRun.png";
 		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
@@ -705,7 +705,7 @@ game.engine = (function(){
 		
 		// FUNCTION: update terrain position, draw it
 		this.update = function() {
-			// slide terrain object left
+			// slide terrain object left quicker if
 			for (var i = 0; i < 1 + paladin.abilities.W.duration/6; ++i)
 				this.position.x -= globalGameSpeed;
 			
@@ -771,15 +771,9 @@ game.engine = (function(){
 			this.classType.height
 		);
 		this.position = new Victor(		// starting player position
-			275 - players.length*75,
+			275 - players.length*100,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.y-250
 		);
-		
-		switch (this.classType) {		// set the player's image offset based on its class
-			case PLAYER_CLASSES.PALADIN:
-				this.offset = new Victor(-65, -25);
-				break;
-		};
 		this.abilities = {				// stores current cooldown on each skill
 			Q: {
 				duration: 0,
@@ -806,9 +800,16 @@ game.engine = (function(){
 				this.Q.cooldown = Math.max(0, this.Q.cooldown-1);
 				this.W.cooldown = Math.max(0, this.W.cooldown-1);
 				this.E.cooldown = Math.max(0, this.E.cooldown-1);
+			},
+			reset: function() {
+				this.Q.duration = this.W.duration = this.E.duration =
+				this.Q.cooldown = this.W.cooldown = this.E.cooldown = 0;
 			}
 		};
-		this.time = 0;					// used to control animation timing
+		this.time = this.order*20;		// used to control animation timing
+		this.frameWidth = this.classType.img.width/28; // width of 1 frame from the spritesheet
+		this.frameHeight = this.classType.img.height;  // height of 1 frame from the spritesheet
+		this.offset = new Victor(this.frameWidth/-3, this.frameHeight/-8); // player's image offset
 		
 		// FUNCTION: cycle order by a number
 		// can be negative to cycle right
@@ -858,13 +859,15 @@ game.engine = (function(){
 						--players[i].order;
 				};
 				
+				// reset ability runtimes and cooldowns
+				this.abilities.reset();
+				
 				// start this one's death counter
 				++this.deathTime;
 			};
 			
 			// regen some health and clamp health within 0 and max
-			this.health += 0.02;
-			this.health = clamp(this.health, 0, this.maxHealth);
+			this.health = clamp(this.health + 0.02, 0, this.maxHealth);
 			
 			// decrement timing and ability variables
 			this.abilities.decrement();
@@ -873,16 +876,16 @@ game.engine = (function(){
 			this.order = clamp(this.order, 0, players.length-1);
 			
 			// try to move towards where it should be in the running order
-			if (this.position.x != 275 - this.order*75) {
+			if (this.position.x != 275 - this.order*100) {
 				// only try to move if its above the terrain level
 				if (this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
 					// if it's close, round off
-					if (Math.abs(this.position.x - (275 - this.order*75)) <= 3) {
-						this.position.x = 275 - this.order*75
+					if (Math.abs(this.position.x - (275 - this.order*100)) <= 3) {
+						this.position.x = 275 - this.order*100;
 					}
 					// otherwise, move towards where it should be
 					else {
-						this.position.x -= Math.sign(this.position.x - (275 - this.order*75))*5;
+						this.position.x -= Math.sign(this.position.x - (275 - this.order*100))*5;
 					};
 				};
 					
@@ -890,7 +893,7 @@ game.engine = (function(){
 				if (currentGameState == GAME_STATE.SWITCHING) {
 					var allSwitched = true;
 					for (var i = 0; i < players.length; ++i)
-						if (players[i].position.x != 275 - players[i].order*75 && players[i].deathTime == 0)
+						if (players[i].position.x != 275 - players[i].order*100 && players[i].deathTime == 0)
 							allSwitched = false;
 							
 					if (allSwitched)
@@ -972,17 +975,14 @@ game.engine = (function(){
 		// FUNCTION: main player draw call
 		this.draw = function() {
 			ctx.save();
-			// draw the player's actualy image
-			if (this.classType == PLAYER_CLASSES.PALADIN) {
-				ctx.drawImage(this.classType.img, 179*Math.floor(this.time), 0, 179, this.classType.img.height, this.position.x + this.offset.x, this.position.y + this.offset.y, 179, this.classType.img.height);
-			}
-			else
-				ctx.drawImage(this.classType.img, this.position.x, this.position.y);
+			// draw the player's actual image from its spritesheet
+			ctx.drawImage(this.classType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
 				
 			// if the one drawing is the paladin, draw the shield if it's up
 			if (this.classType == PLAYER_CLASSES.PALADIN && this.abilities.Q.duration > 0) {
 				// prepare fill style
 				ctx.fillStyle = "rgba(0, 255, 255, " + (this.abilities.Q.duration/100) + ")";
+				
 				// loop players
 				for (var i = 0; i < players.length; ++i) {
 					// draw shield in front of first player
