@@ -783,18 +783,21 @@ game.engine = (function(){
 			Q: {
 				duration: 0,
 				cooldown: 0,
+				level: 0,
 				maxDur: this.classType.qDur,
 				maxCool: this.classType.qCool
 			},
 			W: {
 				duration: 0,
 				cooldown: 0,
+				level: 0,
 				maxDur: this.classType.wDur,
 				maxCool: this.classType.wCool
 			},
 			E: {
 				duration: 0,
 				cooldown: 0,
+				level: 0,
 				maxDur: this.classType.wDur,
 				maxCool: this.classType.wCool
 			},
