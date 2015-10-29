@@ -1,10 +1,26 @@
 "use strict";
 
+var KEY = {					// "enum" equating keycodes to names (e.g. keycode 32 = spacebar)
+		SPACE: 32,
+		LEFT: 37,
+		UP: 38,
+		RIGHT: 39,
+		DOWN: 40,
+		A: 65,
+		D: 68,
+		E: 69,
+		H: 72,
+		P: 80,
+		Q: 81,
+		R: 82,
+		S: 83,
+		W: 87
+	};
+
 // get mouse pos on canvas
 function getMouse(e){
-	var mouse = {}
-	mouse.x = e.pageX - e.target.offsetLeft;
-	mouse.y = e.pageY - e.target.offsetTop;
+	var mouse = {position: {}}
+	mouse.position = Victor(e.pageX - e.target.offsetLeft, e.pageY - e.target.offsetTop);
 	return mouse;
 };
 
@@ -27,15 +43,6 @@ function fillText(ctx, string, x, y, css, color) {
 	ctx.fillStyle = color;
 	ctx.fillText(string, x, y);
 	ctx.restore();
-};
-
-function rectangleContainsPoint(rect, point) {
-	if (rect.width <= 0 || rect.height <= 0) {
-		return false;
-	}
-	
-	return (point.x >= rect.x && point.x <= rect.x + rect.width &&
-			point.y >= rect.y && point.y <= rect.y + rect.height);
 };
 
  // activate fullscreen
