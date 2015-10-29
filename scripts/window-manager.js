@@ -74,7 +74,12 @@ game.windowManager = (function(){
 	
 	// FUNCTION: make a new bar
 	function makeBar(uiName, barName, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin){
-		uiElements.find(uiName).bars.push(new bar(barName, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin));
+		uiElements.find(uiName).bars.push(new bar(uiName, barName, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin));
+	}
+	
+	// FUNCTION: make a new text box
+	function makeText(uiName, textName, offsetX, offsetY, width, height, string, css, color){
+		uiElements.find(uiName).texts.push(new text(uiName, textName, offsetX, offsetY, width, height, string, css, color));
 	}
 	
 	// FUNCTION: modify UI variables
@@ -97,7 +102,7 @@ game.windowManager = (function(){
 				elem.setFill(args.color);
 				break;
 			case("image"):
-				elem.setImage(args.source);
+				elem.setImage(args.image);
 				break;
 		}
 	}
@@ -132,7 +137,7 @@ game.windowManager = (function(){
 				but.setFill(args.color);
 				break;
 			case("image"):
-				but.setImage(args.source);
+				but.setImage(args.image);
 				break;
 			case("text"):
 				but.setText(args.string, args.css, args.color);
@@ -171,19 +176,57 @@ game.windowManager = (function(){
 				bar.setFill(args.backColor, args.foreColor);
 				break;
 			case("image"):
-				bar.setImage(args.backSource, args.foreSource);
+				bar.setImage(args.backImage, args.foreImage);
 				break;
 			case("text"):
 				bar.setText(args.string, args.css, args.color);
 				break;
 			case("target"):
 				bar.setTarget(args.tgtVar, args.tgtMax, args.tgtMin);
+				break;
 		}
 	}
 	
 	// FUNCTION: toggle bar
 	function toggleBar(uiName, barName){
 		uiElements.find(uiName).bars.find(barName).toggleActive();
+	}
+	
+	// FUNCTION: modify text variables
+	function modifyText(uiName, textName, varName, args){
+		var text = uiElements.find(uiName).texts.find(textName);
+		switch(varName){
+			case("name"):
+				text.setName(args.name);
+				break;
+			case("offset"):
+				text.setOffset(args.xPos, args,yPos);
+				break;
+			case("size"):
+				text.setSize(args.width, args.height);
+				break;
+			case("border"):
+				text.setBorder(args.color, args.width);
+				break;
+			case("spacing"):
+				text.setSpacing(args.top, args.right, args.bottom, args.left, args.line);
+			case("fill"):
+				text.setFill(args.color);
+				break;
+			case("image"):
+				text.setImage(args.image);
+				break;
+			case("text"):
+				text.setText(args.string, args.css, args.color);
+				break;
+			case("target"):
+				text.setTarget(args.targets);
+		}
+	}
+	
+	// FUNCTION: toggle text
+	function toggleText(uiName, textName){
+		uiElements.find(uiName).texts.find(textName).toggleActive();
 	}
 	
 	// CLASS: user interface object
@@ -210,8 +253,9 @@ game.windowManager = (function(){
 		
 		this.buttons = [];			// array of contained buttons
 		this.bars = [];				// array of status bars
+		this.texts = [];			// array of text boxes
 		// FUNCTION: find named object in array
-		this.buttons.find = this.bars.find = function(name){
+		this.buttons.find = this.bars.find = this.texts.find = function(name){
 			for(var i=0; i < this.length; i++){
 				if(this[i].name == name){return this[i]};
 			};
@@ -244,8 +288,8 @@ game.windowManager = (function(){
 		};
 		
 		// MUTATOR: set background image
-		this.setImage = function(source){
-			this.image.src = source;		// set to "" to stop image drawing
+		this.setImage = function(image){
+			this.image = image;		// set to null to stop image drawing
 		};
 		
 		// FUNCTION: toggle whether element is active
@@ -276,15 +320,19 @@ game.windowManager = (function(){
 				}
 				
 				// draw image
-				if(this.image.src != ""){
+				if(this.image.src != null){
 					ctx.drawImage(this.image, this.position.x, this.position.y);
 				}
 				
 				// update tracked variables
 				for(var i=0; i < trackers.length; i++){
-					var b = this.bars.find(trackers[i].name);
-					if(b != null){
-						b.target.value = trackers[i].value;
+					var bar = this.bars.find(trackers[i].name);
+					var text = this.texts.find(trackers[i].name);
+					if(bar != null){
+						bar.target.value = trackers[i].value;
+					}
+					if(text != null){
+						text.targets = trackers[i].value;
 					}
 				}
 				
@@ -351,7 +399,7 @@ game.windowManager = (function(){
 				}
 				
 				// draw image
-				if(this.image.src != ""){
+				if(this.image.src != null){
 					ctx.drawImage(this.image, par.position.x + this.offset.x, par.position.y + this.offset.y);
 				}
 				
@@ -389,8 +437,8 @@ game.windowManager = (function(){
 		}
 		
 		// MUTATOR: set button image
-		this.setImage = function(source){
-			this.image.src = source;
+		this.setImage = function(image){
+			this.image = image;
 		}
 		
 		// MUTATOR: set button text
@@ -416,8 +464,9 @@ game.windowManager = (function(){
 	};
 	
 	// CLASS: status bar object
-	var bar = function(name, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin) {
+	var bar = function(parentName, name, offsetX, offsetY, width, height, tgtVar, tgtMax, tgtMin) {
 		// reference name
+		this.parentName = parentName;
 		this.name = name;
 		
 		// offset from base UI element
@@ -462,41 +511,42 @@ game.windowManager = (function(){
 		
 		// FUNCTION: update and draw bar if active
 		this.updateAndDraw = function() {
-			if (this.isActive){		
+			if (this.isActive){	
+				var par = uiElements.find(this.parentName);
 				// percent fill of bar
 				percent = clamp(this.target.value / (this.target.max - this.target.min), 0.0, 1.0);
 				
 				// fill background color
 				if(this.backColor != ""){
 					ctx.fillStyle = this.color.back;
-					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
+					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
 				}
 				
 				// stroke border
 				if(this.border.color != ""){
 					ctx.strokeStyle = this.border.color;
 					ctx.lineWidth = this.border.width;
-					ctx.strokeRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x, this.size.y);
+					ctx.strokeRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
 				}
 				
 				// fill foreground color
-				if(this.foreColor != ""){
+				if(this.foreColor != null){
 					ctx.fillStyle = this.color.fore;
-					ctx.fillRect(position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
+					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x * percent, this.size.y);
 				}
 				
 				// draw background image
-				if(this.image.back.src != ""){
-					ctx.drawImage(this.image.back, position.x + this.offset.x, position.y + this.offset.y);
+				if(this.image.back.src != null){
+					ctx.drawImage(this.image.back, par.position.x + this.offset.x, par.position.y + this.offset.y);
 				}
 				
 				// draw foreground image
 				if(this.image.fore.src != ""){
-					ctx.drawImage(this.image.fore, 0, 0, this.size.x * percent, this.size.y, position.x + this.offset.x, position.y + this.offset.y, this.size.x * percent, this.size.y);
+					ctx.drawImage(this.image.fore, 0, 0, this.size.x * percent, this.size.y, par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x * percent, this.size.y);
 				}
 				// print text
 				if(this.text.string != "") {
-					fillText(ctx, this.text.string, (postition.x + this.offset.x + this.size.x / 2), (position.y + this.offset.y + this.size.y / 2), this.text.css, this.text.color);
+					fillText(ctx, this.text.string, (par.postition.x + this.offset.x + this.size.x / 2), (par.position.y + this.offset.y + this.size.y / 2), this.text.css, this.text.color);
 				}
 			}
 		}
@@ -528,9 +578,9 @@ game.windowManager = (function(){
 		}
 		
 		// MUTATOR: set bar image
-		this.setImage = function(backSource, foreSource){
-			this.image.back.src = backSource;
-			this.image.fore.src = foreSource;
+		this.setImage = function(backImage, foreImage){
+			this.image.back = backImage;
+			this.image.fore = foreImage;
 		}
 		
 		// MUTATOR: set bar text
@@ -550,6 +600,168 @@ game.windowManager = (function(){
 		//} BAR FUNCTIONS
 	}
 
+	// CLASS: text box object
+	var text = function(parentName, name, offsetX, offsetY, width, height, string, css, color) {
+		// reference name
+		this.parentName = parentName;
+		this.name = name;
+		
+		// offset from base UI element
+		this.offset = new Victor(offsetX, offsetY);
+		
+		// text box size
+		this.size = new Victor(width, height);
+		
+		// border styling
+		this.border = {
+			color: "",
+			width: 0,
+		};
+		
+		// text spacing
+		this.spacing = {
+			top: 0,
+			right: 0,
+			bottom: 0,
+			left: 0,
+			line: 0,
+		};
+		
+		// fill colors
+		this.color = {
+			color: "white",
+		};
+		
+		// fill images
+		this.image = new Image();
+		
+		// if the element is active and displayed
+		this.isActive = false; 
+		
+		// text
+		this.text = {
+			string: "",
+			css: "",
+			color: "",
+		};
+		
+		// data to track in formatted string
+		this.trackers = [];
+		
+		// FUNCTION: update and draw if active
+		this.updateAndDraw = function() {
+			if (this.isActive){		
+				var par = uiElements.find(this.parentName);
+				// fill background color
+				if(this.backColor != ""){
+					ctx.fillStyle = this.color;
+					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
+				}
+				
+				// stroke border
+				if(this.border.color != ""){
+					ctx.strokeStyle = this.border.color;
+					ctx.lineWidth = this.border.width;
+					ctx.strokeRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
+				}
+				
+				// draw background image
+				if(this.image != null){
+					ctx.drawImage(this.image, par.position.x + this.offset.x, par.position.y + this.offset.y);
+				}
+				
+				// update formatted text
+				if(trackers.length != 0){
+					var trackIndex = 0;
+					var str = this.text.string;
+					for(var i=0; i < str.length-1; i++){
+						if(str.charAt(i) == "%" && str.charAt(i + 1) == "v"){
+							str = (str.substr(0,i) + this.trackers[trackIndex] + str.substr(i+2));
+							i += this.trackers[trackIndex].length;
+							trackIndex++;
+						}
+					}
+					this.text.string = str;
+				}
+				
+				// print text
+				if(this.text.string != "") {
+					ctx.save();
+					ctx.textAlign = "left";
+					ctx.textBaseline = "top";
+					ctx.font = this.text.css;
+					ctx.fillStyle = this.text.color;
+					
+					var str = this.text.string;
+					var line = 1;
+					for(var i=0; i < str.length; i++){
+						if(ctx.measureText(str.substr(0,i)).width > (this.size.x - this.spacing.left - this.spacing.right)){
+							for(var j=0; j < str.substr(0,i).length; j++){
+								if(str.charAt(i-j) == " "){
+									ctx.fillText(str.substr(0,i-j), (par.position.x + this.offset.x + this.spacing.left), (par.position.y + this.offset.y + this.spacing.top + (ctx.measureText(str.substr(0,i)).height + this.spacing.line) * line));
+									line++;
+									str = str.sustr(i-j+1);
+								}
+							}
+						}
+					}
+					ctx.restore();
+				}
+			}
+		};
+		
+		//{ TEXT FUNCTIONS
+		// MUTATOR: set name
+		this.setName = function(newName){
+			this.name = newName;
+		};
+		
+		// MUTATOR: set offset
+		this.setOffset = function(xOffset, yOffset){
+			this.offset = new Victor(offsetX, offsetY);
+		};
+		
+		// MUTATOR: set size
+		this.setSize = function(width, height){
+			this.size = new Victor(width, height);
+		};
+		
+		// MUTATOR: set border styling
+		this.setBorder = function(color, width){
+			this.border = {color:color, width:width};
+		};
+		
+		this.setSpacing = function(top, right, bottom, left, line){
+			this.spacing = {top:top, right:right, bottom:bottom, left:left, line:line};
+		};
+		
+		// MUTATOR: set color
+		this.setFill = function(color){
+			this.color = {color: color};
+		};
+		
+		// MUTATOR: set image
+		this.setImage = function(image){
+			this.image = image;
+		};
+		
+		// MUTATOR: set text
+		this.setText = function(string, css, color){
+			this.text = {string:string, css:css, color:color};
+		};
+		
+		// MUTATOR: set targets
+		this.setTarget = function(targets){
+			this.trackers = targets;
+		};
+		
+		// FUNCTION: toggle if active
+		this.toggleActive = function(){
+			this.isActive = !this.isActive;
+		};
+		//} TEXT FUNCTIONS
+	}
+	
 	return {
 		init: init,
 		updateAndDraw: updateAndDraw,
