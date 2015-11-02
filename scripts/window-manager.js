@@ -45,15 +45,17 @@ game.windowManager = (function(){
 		for(var i=0; i < uiElements.length; i++){
 			elem = uiElements[i];
 			//console.log("Element bounds: " + elem.position.x + ", " + elem.position.y + ", " + (elem.position.x + elem.size.x) + ", " + (elem.position.y + elem.size.y));
-			if(mouse.position.x >= elem.position.x && mouse.position.x <= (elem.position.x + elem.size.x) && mouse.position.y >= elem.position.y && mouse.position.y <= (elem.position.y + elem.size.y)){
+			if(mouse.position.x >= elem.position.x && mouse.position.x <= (elem.position.x + elem.size.x) && mouse.position.y >= elem.position.y && mouse.position.y <= (elem.position.y + elem.size.y) && elem.isActive){
 				clicked = true;
 				// check if any buttons were clicked inside the clicked element
 				for(var j=0; j < uiElements[i].buttons.length; j++){
 					but = elem.buttons[j];
-					if(mouse.position.x >= elem.position.x + but.offset.x && mouse.position.x <= elem.position.x + but.offset.x + but.size.x && mouse.position.y >= elem.position.y + but.offset.y && mouse.position.y <= elem.position.y + but.offset.y + but.size.y){
-						// call click event of clicked button
-						but.onClick();
-						return clicked;
+					if(mouse.position.x >= elem.position.x + but.offset.x && mouse.position.x <= elem.position.x + but.offset.x + but.size.x && mouse.position.y >= elem.position.y + but.offset.y && mouse.position.y <= elem.position.y + but.offset.y + but.size.y && but.isActive){
+						// call click event of clicked button if it has one
+						if (but.onClick != undefined) {
+							but.onClick();
+							return clicked;
+						}
 					}
 				}
 			}
@@ -107,6 +109,16 @@ game.windowManager = (function(){
 		uiElements.find(name).toggleActive();
 	}
 	
+	// FUNCTION: forcibly deactivates UI element
+	function deactivate(name){
+		uiElements.find(name).deactivate();
+	};
+	
+	// FUNCTION: forcibly activate UI element
+	function activate(name){
+		uiElements.find(name).activate();
+	};
+		
 	// FUNCTION: toggle whether UI pauses game when active
 	function toggleUIPausing(name){
 		uiElements.find(name).togglePause();
@@ -251,6 +263,16 @@ game.windowManager = (function(){
 		// FUNCTION: toggle whether element is active
 		this.toggleActive = function(){
 			this.isActive = !this.isActive;
+		};
+		
+		// FUNCTION: forcibly deactivates the element
+		this.deactivate = function(){
+			this.isActive = false;
+		};
+		
+		// FUNCTION: forcibly activate the element
+		this.activate = function(){
+			this.isActive = true;
 		};
 		
 		// FUNCTION: toggle whether element pauses game
@@ -412,6 +434,16 @@ game.windowManager = (function(){
 		this.toggleActive = function(){
 			this.isActive = !this.isActive;
 		}
+		
+		// FUNCTION: forcibly deactivates the element
+		this.deactivate = function(){
+			this.isActive = false;
+		};
+		
+		// FUNCTION: forcibly activate the element
+		this.activate = function(){
+			this.isActive = true;
+		};
 		//} BUTTON FUNCTIONS
 	};
 	
@@ -547,6 +579,16 @@ game.windowManager = (function(){
 		this.toggleActive = function(){
 			this.isActive = !this.isActive;
 		}
+		
+		// FUNCTION: forcibly deactivates the element
+		this.deactivate = function(){
+			this.isActive = false;
+		};
+		
+		// FUNCTION: forcibly activate the element
+		this.activate = function(){
+			this.isActive = true;
+		};
 		//} BAR FUNCTIONS
 	}
 
@@ -559,6 +601,8 @@ game.windowManager = (function(){
 		makeBar: makeBar,
 		modifyUI: modifyUI,
 		toggleUI: toggleUI,
+		activate: activate,
+		deactivate: deactivate,
 		toggleUIPausing: toggleUIPausing,
 		modifyButton: modifyButton,
 		toggleButton: toggleButton,
