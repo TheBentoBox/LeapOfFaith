@@ -1,4 +1,4 @@
-// window-manager.js
+ // window-manager.js
 "use strict";
 // if game exists use the existing copy
 // else create a new object literal
@@ -88,6 +88,14 @@ game.windowManager = (function(){
 	function modifyUI(uiName, varName, args){
 		var elem = uiElements.find(uiName);
 		switch(varName){
+			case("all"):
+				elem.setName(args.name);
+				elem.setPosition(args.xPos, args,yPos);
+				elem.setSize(args.width, args.height);
+				elem.setBorder(args.color, args.width);
+				elem.setFill(args.color);
+				elem.setImage(args.image);
+				break;
 			case("name"):
 				elem.setName(args.name);
 				break;
@@ -133,6 +141,17 @@ game.windowManager = (function(){
 	function modifyButton(uiName, buttonName, varName, args){
 		var but = uiElements.find(uiName).buttons.find(buttonName);
 		switch(varName){
+			case("all"):
+				but.setName(args.name);
+				but.setOffset(args.xPos, args,yPos);
+				but.setSize(args.width, args.height);
+				but.setBorder(args.color, args.width);
+				but.setFill(args.color);
+				but.setImage(args.image);
+				but.setText(args.string, args.css, args.color);
+				but.setClick(args.event);
+				but.setHover(args.event);
+				break;
 			case("name"):
 				but.setName(args.name);
 				break;
