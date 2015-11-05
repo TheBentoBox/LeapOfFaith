@@ -323,6 +323,7 @@ game.engine = (function(){
 		grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
 		windowManager.modifyUI("scoreHUD", "fill", {color: grad});
 		windowManager.toggleUI("scoreHUD");
+		// score text
 		windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
 		windowManager.toggleText("scoreHUD", "score");
 		
