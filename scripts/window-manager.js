@@ -367,6 +367,11 @@ game.windowManager = (function(){
 				for(var i=0; i < this.bars.length; i++){
 					this.bars[i].updateAndDraw()
 				}
+				
+				// update and draw text
+				for(var i=0; i < this.texts.length; i++){
+					this.texts[i].updateAndDraw()
+				}
 			}		
 		};
 	};
@@ -405,7 +410,7 @@ game.windowManager = (function(){
 		
 		// FUNCTION: update and draw button if active
 		this.updateAndDraw = function() {
-			if (this.isActive){	
+			if (this.isActive) {	
 				var par = uiElements.find(this.parentName);
 				// fill color
 				if(this.fillColor != ""){
@@ -426,7 +431,7 @@ game.windowManager = (function(){
 				}
 				
 				// print text
-				if(this.text.string != "") {
+				if (this.text.string != "") {
 					fillText(ctx, this.text.string, (par.position.x + this.offset.x + this.size.x / 2), (par.position.y + this.offset.y + this.size.y / 2), this.text.css, this.text.color);
 				}
 			}
@@ -652,7 +657,10 @@ game.windowManager = (function(){
 		this.offset = new Victor(offsetX, offsetY);
 		
 		// text box size
-		this.size = new Victor(width, height);
+		var w = width, h = height;
+		if (w === "default") w = ctx.measureText(string).width;
+		if (h === "default") h = w*1.5;
+		this.size = new Victor(w, h);
 		
 		// border styling
 		this.border = {
@@ -670,9 +678,7 @@ game.windowManager = (function(){
 		};
 		
 		// fill colors
-		this.color = {
-			color: "white",
-		};
+		this.backColor = "rgba(0, 0, 0, 0)";
 		
 		// fill images
 		this.image = new Image();
@@ -682,9 +688,9 @@ game.windowManager = (function(){
 		
 		// text
 		this.text = {
-			string: "",
-			css: "",
-			color: "",
+			string: string,
+			css: css,
+			color: color,
 		};
 		
 		// data to track in formatted string
@@ -695,7 +701,7 @@ game.windowManager = (function(){
 			if (this.isActive){		
 				var par = uiElements.find(this.parentName);
 				// fill background color
-				if(this.backColor != ""){
+				if(this.backColor != "") {
 					ctx.fillStyle = this.color;
 					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
 				}
@@ -713,7 +719,7 @@ game.windowManager = (function(){
 				}
 				
 				// update formatted text
-				if(trackers.length != 0){
+				if(this.trackers.length != 0){
 					var trackIndex = 0;
 					var str = this.text.string;
 					for(var i=0; i < str.length-1; i++){
@@ -728,23 +734,41 @@ game.windowManager = (function(){
 				
 				// print text
 				if(this.text.string != "") {
+					// save canvas context and set up drawing variables
 					ctx.save();
 					ctx.textAlign = "left";
 					ctx.textBaseline = "top";
 					ctx.font = this.text.css;
 					ctx.fillStyle = this.text.color;
 					
+					// prepare variables for drawing string with wrapping
 					var str = this.text.string;
-					var line = 1;
-					for(var i=0; i < str.length; i++){
-						if(ctx.measureText(str.substr(0,i)).width > (this.size.x - this.spacing.left - this.spacing.right)){
-							for(var j=0; j < str.substr(0,i).length; j++){
-								if(str.charAt(i-j) == " "){
-									ctx.fillText(str.substr(0,i-j), (par.position.x + this.offset.x + this.spacing.left), (par.position.y + this.offset.y + this.spacing.top + (ctx.measureText(str.substr(0,i)).height + this.spacing.line) * line));
-									line++;
-									str = str.sustr(i-j+1);
-								}
+					var line = 0;
+					var xPos = 0;
+					var height = (ctx.measureText(str).width/str.length) * 1.5;
+					
+					// loop through letters
+					for(var i = 0; i < str.length; i++){
+						// if currently looped character is a space or we've reached the end of the string, draw the word
+						if (str.charAt(i) == " " || i == str.length - 1) {
+							// get the current word
+							var subtext = str.substr(0, i+1);
+							var measured = ctx.measureText(subtext);
+							
+							// wrap down to next line if the current word:
+							// 1 - would go outside the textbox (xPos + it's width > box size - padding)
+							// 2 - isn't wider than the textbox on its own (xPos > 0 - only wraps if it's not the first word)
+							if (xPos + measured.width > this.size.x - this.spacing.left - this.spacing.right && xPos > 0) {
+								++line;
+								xPos = 0;
 							}
+							
+							// draw the text
+							ctx.fillText(subtext, par.position.x + this.offset.x + this.spacing.left + xPos, par.position.y + this.offset.y + this.spacing.top + (height*line));
+							// update drawing variables
+							xPos += measured.width; // slide draw position over
+							str = str.substr(i+1);  // cut out the word we just drew from the string
+							i = 0;					// start at the beginning of the new substring
 						}
 					}
 					ctx.restore();
@@ -811,6 +835,7 @@ game.windowManager = (function(){
 		makeUI: makeUI,
 		makeButton: makeButton,
 		makeBar: makeBar,
+		makeText: makeText,
 		modifyUI: modifyUI,
 		toggleUI: toggleUI,
 		activate: activate,
@@ -819,6 +844,8 @@ game.windowManager = (function(){
 		modifyButton: modifyButton,
 		toggleButton: toggleButton,
 		modifyBar: modifyBar,
-		toggleBar: toggleBar
+		toggleBar: toggleBar,
+		modifyText: modifyText,
+		toggleText: toggleText
 	}
 }());
