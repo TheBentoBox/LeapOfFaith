@@ -373,7 +373,7 @@ game.windowManager = (function(){
 						bar.target.value = trackers[i].value;
 					}
 					if(text != null){
-						text.targets = trackers[i].value;
+						text.trackers = trackers[i].value;
 					}
 				}
 				
@@ -708,6 +708,7 @@ game.windowManager = (function(){
 		// text
 		this.text = {
 			string: string,
+			output: string,
 			css: css,
 			color: color,
 		};
@@ -739,8 +740,6 @@ game.windowManager = (function(){
 				// update formatted text
 				if(this.trackers.length != 0){
 					var trackIndex = 0;
-					console.log("Updating trackers");
-					console.log(this.trackers[trackIndex]);
 					var str = this.text.string;
 					for(var i=0; i < str.length-1; i++){
 						if(str.charAt(i) == "%" && str.charAt(i + 1) == "v"){
@@ -749,11 +748,11 @@ game.windowManager = (function(){
 							trackIndex++;
 						}
 					}
-					this.text.string = str;
+					this.text.output = str;
 				}
 				
 				// print text
-				if(this.text.string != "") {
+				if(this.text.output != "") {
 					// save canvas context and set up drawing variables
 					ctx.save();
 					ctx.textAlign = "left";
@@ -762,7 +761,7 @@ game.windowManager = (function(){
 					ctx.fillStyle = this.text.color;
 					
 					// prepare variables for drawing string with wrapping
-					var str = this.text.string;
+					var str = this.text.output;
 					var line = 0;
 					var xPos = 0;
 					var height = (ctx.measureText(str).width/str.length) * 1.5;
@@ -787,7 +786,7 @@ game.windowManager = (function(){
 							ctx.fillText(subtext, par.position.x + this.offset.x + this.spacing.left + xPos, par.position.y + this.offset.y + this.spacing.top + (height*line));
 							// update drawing variables
 							xPos += measured.width; // slide draw position over
-							str = str.substr(i+1);  // cut out the word we just drew from the string
+							str = str.substr(i);    // cut out the word we just drew from the string
 							i = 0;					// start at the beginning of the new substring
 						}
 					}
@@ -833,7 +832,7 @@ game.windowManager = (function(){
 		
 		// MUTATOR: set text
 		this.setText = function(string, css, color){
-			this.text = {string:string, css:css, color:color};
+			this.text = {string:string, output:string, css:css, color:color};
 		};
 		
 		// MUTATOR: set targets

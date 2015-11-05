@@ -711,7 +711,7 @@ game.engine = (function(){
 		// draw HUDs
 		if (currentGameState != GAME_STATE.DEAD) {
 			game.windowManager.updateAndDraw([{name:"score", value:[score]}]);
-		
+			
 			// draw score in upper right
 			//var grad = ctx.createLinearGradient(0, 0, 150, 0);
 			//grad.addColorStop(0, "rgba(0, 0, 0, 0)");
