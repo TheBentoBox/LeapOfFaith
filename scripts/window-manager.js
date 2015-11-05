@@ -379,17 +379,17 @@ game.windowManager = (function(){
 				
 				// update and draw buttons
 				for(var i=0; i < this.buttons.length; i++){
-					this.buttons[i].updateAndDraw()
+					this.buttons[i].updateAndDraw();
 				}
 				
 				// update and draw bars
 				for(var i=0; i < this.bars.length; i++){
-					this.bars[i].updateAndDraw()
+					this.bars[i].updateAndDraw();
 				}
 				
 				// update and draw text
 				for(var i=0; i < this.texts.length; i++){
-					this.texts[i].updateAndDraw()
+					this.texts[i].updateAndDraw();
 				}
 			}		
 		};
@@ -697,7 +697,7 @@ game.windowManager = (function(){
 		};
 		
 		// fill colors
-		this.backColor = "rgba(0, 0, 0, 0)";
+		this.color = "rgba(0, 0, 0, 0)";
 		
 		// fill images
 		this.image = new Image();
@@ -720,7 +720,7 @@ game.windowManager = (function(){
 			if (this.isActive){		
 				var par = uiElements.find(this.parentName);
 				// fill background color
-				if(this.backColor != "") {
+				if(this.color != "") {
 					ctx.fillStyle = this.color;
 					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
 				}
@@ -736,10 +736,11 @@ game.windowManager = (function(){
 				if(this.image != null){
 					ctx.drawImage(this.image, par.position.x + this.offset.x, par.position.y + this.offset.y);
 				}
-				
 				// update formatted text
 				if(this.trackers.length != 0){
 					var trackIndex = 0;
+					console.log("Updating trackers");
+					console.log(this.trackers[trackIndex]);
 					var str = this.text.string;
 					for(var i=0; i < str.length-1; i++){
 						if(str.charAt(i) == "%" && str.charAt(i + 1) == "v"){

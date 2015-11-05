@@ -315,6 +315,17 @@ game.engine = (function(){
 		//windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 		//windowManager.toggleButton("abilityHUD", "ability3");
 		
+		// score HUD
+		windowManager.makeUI("scoreHUD", canvas.width-150, 0, 150, 50);
+		// set fill to gradient
+		var grad = ctx.createLinearGradient(0, 0, 150, 0);
+		grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+		grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+		windowManager.modifyUI("scoreHUD", "fill", {color: grad});
+		windowManager.toggleUI("scoreHUD");
+		windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
+		windowManager.toggleText("scoreHUD", "score");
+		
 		//== Register Between-level Upgrade Shop UI ==//
 		// black background for shop window
 		windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
@@ -699,16 +710,16 @@ game.engine = (function(){
 		
 		// draw HUDs
 		if (currentGameState != GAME_STATE.DEAD) {
-			game.windowManager.updateAndDraw([]);
+			game.windowManager.updateAndDraw([{name:"score", value:[score]}]);
 		
 			// draw score in upper right
-			var grad = ctx.createLinearGradient(0, 0, 150, 0);
-			grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-			grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-			ctx.fillStyle = grad;
-			ctx.fillRect(canvas.width-150, 0, 150, 50);
-			fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
-			ctx.fill();
+			//var grad = ctx.createLinearGradient(0, 0, 150, 0);
+			//grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+			//grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+			//ctx.fillStyle = grad;
+			//ctx.fillRect(canvas.width-150, 0, 150, 50);
+			//fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
+			//ctx.fill();
 		}
 		// draw death screen if player has died
 		else {
