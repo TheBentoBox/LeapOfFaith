@@ -570,10 +570,10 @@ game.windowManager = (function(){
 			if (this.isActive){	
 				var par = uiElements.find(this.parentName);
 				// percent fill of bar
-				percent = clamp(this.target.value / (this.target.max - this.target.min), 0.0, 1.0);
+				var percent = clamp(this.target.value / (this.target.max - this.target.min), 0.0, 1.0);
 				
 				// fill background color
-				if(this.backColor != ""){
+				if(this.color.back != ""){
 					ctx.fillStyle = this.color.back;
 					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
 				}
@@ -586,7 +586,7 @@ game.windowManager = (function(){
 				}
 				
 				// fill foreground color
-				if(this.foreColor != null){
+				if(this.color.fore != ""){
 					ctx.fillStyle = this.color.fore;
 					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x * percent, this.size.y);
 				}
