@@ -1,4 +1,4 @@
-// window-manager.js
+ // window-manager.js
 "use strict";
 // if game exists use the existing copy
 // else create a new object literal
@@ -88,6 +88,14 @@ game.windowManager = (function(){
 	function modifyUI(uiName, varName, args){
 		var elem = uiElements.find(uiName);
 		switch(varName){
+			case("all"):
+				elem.setName(args.name);
+				elem.setPosition(args.xPos, args,yPos);
+				elem.setSize(args.width, args.height);
+				elem.setBorder(args.color, args.width);
+				elem.setFill(args.color);
+				elem.setImage(args.image);
+				break;
 			case("name"):
 				elem.setName(args.name);
 				break;
@@ -133,6 +141,17 @@ game.windowManager = (function(){
 	function modifyButton(uiName, buttonName, varName, args){
 		var but = uiElements.find(uiName).buttons.find(buttonName);
 		switch(varName){
+			case("all"):
+				but.setName(args.name);
+				but.setOffset(args.xPos, args,yPos);
+				but.setSize(args.width, args.height);
+				but.setBorder(args.color, args.width);
+				but.setFill(args.color);
+				but.setImage(args.image);
+				but.setText(args.string, args.css, args.color);
+				but.setClick(args.event);
+				but.setHover(args.event);
+				break;
 			case("name"):
 				but.setName(args.name);
 				break;
@@ -354,23 +373,23 @@ game.windowManager = (function(){
 						bar.target.value = trackers[i].value;
 					}
 					if(text != null){
-						text.targets = trackers[i].value;
+						text.trackers = trackers[i].value;
 					}
 				}
 				
 				// update and draw buttons
 				for(var i=0; i < this.buttons.length; i++){
-					this.buttons[i].updateAndDraw()
+					this.buttons[i].updateAndDraw();
 				}
 				
 				// update and draw bars
 				for(var i=0; i < this.bars.length; i++){
-					this.bars[i].updateAndDraw()
+					this.bars[i].updateAndDraw();
 				}
 				
 				// update and draw text
 				for(var i=0; i < this.texts.length; i++){
-					this.texts[i].updateAndDraw()
+					this.texts[i].updateAndDraw();
 				}
 			}		
 		};
@@ -678,7 +697,7 @@ game.windowManager = (function(){
 		};
 		
 		// fill colors
-		this.backColor = "rgba(0, 0, 0, 0)";
+		this.color = "rgba(0, 0, 0, 0)";
 		
 		// fill images
 		this.image = new Image();
@@ -689,6 +708,7 @@ game.windowManager = (function(){
 		// text
 		this.text = {
 			string: string,
+			output: string,
 			css: css,
 			color: color,
 		};
@@ -701,7 +721,7 @@ game.windowManager = (function(){
 			if (this.isActive){		
 				var par = uiElements.find(this.parentName);
 				// fill background color
-				if(this.backColor != "") {
+				if(this.color != "") {
 					ctx.fillStyle = this.color;
 					ctx.fillRect(par.position.x + this.offset.x, par.position.y + this.offset.y, this.size.x, this.size.y);
 				}
@@ -717,7 +737,6 @@ game.windowManager = (function(){
 				if(this.image != null){
 					ctx.drawImage(this.image, par.position.x + this.offset.x, par.position.y + this.offset.y);
 				}
-				
 				// update formatted text
 				if(this.trackers.length != 0){
 					var trackIndex = 0;
@@ -729,11 +748,11 @@ game.windowManager = (function(){
 							trackIndex++;
 						}
 					}
-					this.text.string = str;
+					this.text.output = str;
 				}
 				
 				// print text
-				if(this.text.string != "") {
+				if(this.text.output != "") {
 					// save canvas context and set up drawing variables
 					ctx.save();
 					ctx.textAlign = "left";
@@ -742,7 +761,7 @@ game.windowManager = (function(){
 					ctx.fillStyle = this.text.color;
 					
 					// prepare variables for drawing string with wrapping
-					var str = this.text.string;
+					var str = this.text.output;
 					var line = 0;
 					var xPos = 0;
 					var height = (ctx.measureText(str).width/str.length) * 1.5;
@@ -767,7 +786,7 @@ game.windowManager = (function(){
 							ctx.fillText(subtext, par.position.x + this.offset.x + this.spacing.left + xPos, par.position.y + this.offset.y + this.spacing.top + (height*line));
 							// update drawing variables
 							xPos += measured.width; // slide draw position over
-							str = str.substr(i+1);  // cut out the word we just drew from the string
+							str = str.substr(i);    // cut out the word we just drew from the string
 							i = 0;					// start at the beginning of the new substring
 						}
 					}
@@ -813,7 +832,7 @@ game.windowManager = (function(){
 		
 		// MUTATOR: set text
 		this.setText = function(string, css, color){
-			this.text = {string:string, css:css, color:color};
+			this.text = {string:string, output:string, css:css, color:color};
 		};
 		
 		// MUTATOR: set targets
