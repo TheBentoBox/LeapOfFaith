@@ -33,7 +33,7 @@ game.engine = (function(){
 	var GAME_STATE = {			// "enum" of the current status of the game
 		START: 0,				// start screen
 		RUNNING: 1,				// players are alive and running
-		PAUSED: 2,			// players are swapping positions
+		PAUSED: 2,				// players are swapping positions
 		BETWEEN: 3,				// between levels on the buy screen
 		DEAD: 4,				// entire party is dead
 		HIGHSCORE: 5			// viewing the high score table
@@ -121,7 +121,7 @@ game.engine = (function(){
 	var enemies = [];
 	var ENEMY_TYPES = {
 		GATOR: {
-			name: "GATOR",
+			name: "Gator",
 			health: 75,
 			img: new Image(),
 			width: 100,
@@ -287,65 +287,159 @@ game.engine = (function(){
 		// callback for button presses
 		window.addEventListener("keyup", keyRelease);
 		
-		//== Register Ability UI ==//
-		// HUD box for current abilities
-		windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/6, canvas.height/8);
-		// set ability box to sandstone colors
-		windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
-		windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
-		windowManager.toggleUI("abilityHUD");
-		// ability buttons
-		windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q});});
-		windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
-		windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
-		windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
-		windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
-		windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
-		windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
-		//windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
-		//windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
-		//windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.toggleButton("abilityHUD", "ability3");
-		
-		// score HUD
-		windowManager.makeUI("scoreHUD", canvas.width-150, 0, 150, 50);
-		// set fill to gradient
-		var grad = ctx.createLinearGradient(0, 0, 150, 0);
-		grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-		grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-		windowManager.modifyUI("scoreHUD", "fill", {color: grad});
-		windowManager.toggleUI("scoreHUD");
-		// score text
-		windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
-		
-		//== Register Between-level Upgrade Shop UI ==//
-		// black background for shop window
-		windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
-		windowManager.modifyUI("shopHUD", "fill", {color: "rgba(0, 0, 0, 0.65)"});
-		// main box that makes up shop window
-		windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
-		windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
-		windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
-		// 'next level' button
-		windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
-		windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
-		windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
-		windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//== Player ability upgrades ==//
-		// Paladin Q
-		//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
-		//windowManager.modifyButton("shopHUD", "paladinQ", "fill", {color: "#30d0ff"});
-		//windowManager.modifyButton("shopHUD", "paladinQ", "border", {color: "#0b85a8", width: 2});
-		//windowManager.modifyButton("shopHUD", "paladinQ", "text", {string: "+Shield Duration", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.toggleButton("shopHUD", "paladinQ");	
-		// Paladin W
-		//windowManager.makeButton("shopHUD", "paladinW", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
-		//windowManager.modifyButton("shopHUD", "paladinW", "fill", {color: "#30d0ff"});
-		//windowManager.modifyButton("shopHUD", "paladinW", "border", {color: "#0b85a8", width: 2});
-		//windowManager.modifyButton("shopHUD", "paladinW", "text", {string: "+Dash Speed", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.toggleButton("shopHUD", "paladinW");	
+		//== BUILD UI ELEMENTS ==//{
+			//== Main Menu ==//{
+				windowManager.makeUI("titleScreen", 0, 0, canvas.width, canvas.height);
+				var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+				grad.addColorStop(0, "#ddce8f");
+				grad.addColorStop(1, "#B5A76B");
+				windowManager.modifyUI("titleScreen", "fill", {color: grad});
+				
+				// game title
+				windowManager.makeText("titleScreen", "title", 50, 50, canvas.width, "default", "Leap of Faith", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.toggleUI("titleScreen");
+				
+				// start game button
+				windowManager.makeButton("titleScreen", "startButton", 60, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {game.engine.setupGame();});
+				windowManager.modifyButton("titleScreen", "startButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("titleScreen", "startButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("titleScreen", "startButton", "text", {string: "Start", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// instructions button
+				windowManager.makeButton("titleScreen", "instructionButton", 250, 5*canvas.height/6, canvas.width/5, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("instructionScreen");});
+				windowManager.modifyButton("titleScreen", "instructionButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("titleScreen", "instructionButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("titleScreen", "instructionButton", "text", {string: "Instructions", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// credits button
+				windowManager.makeButton("titleScreen", "creditButton", 540, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("creditScreen");});
+				windowManager.modifyButton("titleScreen", "creditButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("titleScreen", "creditButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("titleScreen", "creditButton", "text", {string: "Credits", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+			//== End Menu ==//}
+			
+			//== Instruction Screen ==//{
+				windowManager.makeUI("instructionScreen", 0, 0, canvas.width, canvas.height);
+				windowManager.modifyUI("instructionScreen", "fill", {color: grad});
+				windowManager.activateUIPausing("instructionScreen");
+				
+				// instruction text
+				windowManager.makeText("instructionScreen", "title", 50, 50, "default", "default", "Instructions", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.makeText("instructionScreen", "instructions", 65, 130, canvas.width - 50, "default", 
+					"LMB/RMB:     Cycle party members%n" +
+					"Left/Right:  Cycle party members%n" +
+					"Space:       Jump/Double-jump%n" +
+					"Q/W/E        Activate abilities%n" +
+					"Party members regenerate health and respawn over time.%n" +
+					"Earn experience by surviving and killing enemies.%n" +
+					"Upgrade your party members between levels.%n", 
+					"20pt 'Uncial Antiqua'", "#666044"
+				);
+				windowManager.modifyText("instructionScreen", "instructions", "padding", {top: 0, right: 0, bottom: 0, left: 0, line: 20});
+				
+				// back button
+				windowManager.makeButton("instructionScreen", "backButton", canvas.width * 7/8 - 50, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("instructionScreen"); windowManager.toggleUI("titleScreen");});
+				windowManager.modifyButton("instructionScreen", "backButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("instructionScreen", "backButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("instructionScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+			//== End Instructions ==//}
+				
+			//== Credit Screen ==//{
+				windowManager.makeUI("creditScreen", 0, 0, canvas.width, canvas.height);
+				windowManager.modifyUI("creditScreen", "fill", {color: grad});
+				windowManager.activateUIPausing("creditScreen");
+				
+				// instruction text
+				windowManager.makeText("creditScreen", "title", 50, 50, "default", "default", "Credits", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.makeText("creditScreen", "credits", 65, 130, canvas.width - 50, "default", 
+					"Engine:        Jake Ben-Tovim%n" +
+					"Interface:     Joe Kapusta%n" +
+					"Art:           Michelle Leadley%n" +
+					"Design:        Austin White%n", 
+					"24pt 'Uncial Antiqua'", "#666044"
+				);
+				windowManager.modifyText("creditScreen", "credits", "padding", {top: 0, right: 0, bottom: 0, left: 0, line: 20});
+				
+				// back button
+				windowManager.makeButton("creditScreen", "backButton", canvas.width * 7/8 - 50, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("creditScreen"); windowManager.toggleUI("titleScreen");});
+				windowManager.modifyButton("creditScreen", "backButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("creditScreen", "backButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("creditScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+			//== End Credits ==//}
+			
+			//== Ability UI ==//{
+				// HUD box for current abilities
+				windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
+				
+				// set ability box to sandstone colors
+				windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
+				
+				//== Ability Buttons ==//
+				//ability 1
+				windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q});});
+				windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				
+				// ability 2
+				windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
+				windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				
+				// ability 3
+				windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
+				windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+			//== End Abilities ==//}
+			
+			//== Score UI ==//{
+				windowManager.makeUI("scoreHUD", canvas.width-150, 0, 150, 50);
+				
+				// set fill to gradient
+				var grad = ctx.createLinearGradient(0, 0, 150, 0);
+				grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+				grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+				windowManager.modifyUI("scoreHUD", "fill", {color: grad});
+				
+				// score text
+				windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
+			//== End Score ==//}
+			
+			//== Upgrade Shop UI ==//{
+				// black background for shop window
+				windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
+				windowManager.modifyUI("shopHUD", "fill", {color: "rgba(0, 0, 0, 0.65)"});
+				
+				// main box that makes up shop window
+				windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
+				windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
+				
+				// 'next level' button
+				windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
+				windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				
+				//== Player ability upgrades ==//
+				// Paladin Q
+				//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
+				//windowManager.modifyButton("shopHUD", "paladinQ", "fill", {color: "#30d0ff"});
+				//windowManager.modifyButton("shopHUD", "paladinQ", "border", {color: "#0b85a8", width: 2});
+				//windowManager.modifyButton("shopHUD", "paladinQ", "text", {string: "+Shield Duration", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				//windowManager.toggleButton("shopHUD", "paladinQ");	
+				
+				// Paladin W
+				//windowManager.makeButton("shopHUD", "paladinW", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
+				//windowManager.modifyButton("shopHUD", "paladinW", "fill", {color: "#30d0ff"});
+				//windowManager.modifyButton("shopHUD", "paladinW", "border", {color: "#0b85a8", width: 2});
+				//windowManager.modifyButton("shopHUD", "paladinW", "text", {string: "+Dash Speed", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				//windowManager.toggleButton("shopHUD", "paladinW");
+			//== End Shop ==//}
+		//== END UI ==//}
 		
 		// BEGIN main game tick
 		update();
@@ -357,6 +451,9 @@ game.engine = (function(){
 		score = 0;
 		currentLevel = 0;
 		currentGameState = GAME_STATE.RUNNING;
+		
+		// deactivate menu
+		windowManager.deactivateUI("titleScreen");
 		
 		// SETUP: game
 		// create the players
@@ -446,22 +543,7 @@ game.engine = (function(){
 			if (keys[KEY.SPACE] || mouseDown) {
 				setupGame();
 			}
-			else {
-				ctx.fillStyle = "rgb(20, 20, 20)";
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-				ctx.fill();
-				fillText(ctx, "Welcome to Leap of Faith", canvas.width/2, canvas.height/2-100, "30pt 'Uncial Antiqua'", "white");
-				fillText(ctx, "Left and right click or arrows to cycle party members left or right", canvas.width/2, canvas.height/2-50, "20pt Calibri", "white");
-				fillText(ctx, "Press space to jump. You can double jump.", canvas.width/2, canvas.height/2-20, "20pt Calibri", "white");
-				fillText(ctx, "Press Q or W to activate the party leader's primary/secondary abilities", canvas.width/2, canvas.height/2+10, "20pt Calibri", "white");
-				fillText(ctx, "Party members respawn after a delay, and they regen health slowly", canvas.width/2, canvas.height/2+40, "20pt Calibri", "white");
-				fillText(ctx, "Get points from surviving and killing enemies", canvas.width/2, canvas.height/2+70, "20pt Calibri", "white");
-				fillText(ctx, "(The enemies are the boxes with pro jumping and flying skills)", canvas.width/2, canvas.height/2+95, "12pt Calibri", "white");
-				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
-				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
-				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
-				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design & Audio: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
-			}
+			windowManager.updateAndDraw([]);
 			return;
 		}
 		
