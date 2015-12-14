@@ -9,11 +9,12 @@ game.engine = (function(){
 	
 	/* VARIABLES */
 	// SCREEN AND AUDIO VARIABLES
-	var bgPlayer;				// audio player reference for background audio
+	var windowManager = game.windowManager; // reference to the engine's window manager
+	var bgAudio;				// audio player reference for background audio
+	var sfxPlayer;				// audio player reference for sound effects
 	var canvas,ctx;				// canvas references
 	var mouseX, mouseY;			// mouse coordinates
 	var animationID;			// stores animation ID of animation frame
-	var paused = false;			// if the game is paused
 	var mouseDown = false;		// if the mouse is being held down
 	var uiClicked = false;		// if UI was clicked
 	var mouse = {};				// the mouse object
@@ -32,12 +33,16 @@ game.engine = (function(){
 	var GAME_STATE = {			// "enum" of the current status of the game
 		START: 0,				// start screen
 		RUNNING: 1,				// players are alive and running
-		SWITCHING: 2,			// players are swapping positions
-		DEAD: 3,				// entire party is dead
-		HIGHSCORE: 4			// viewing the high score table
+		PAUSED: 2,			// players are swapping positions
+		BETWEEN: 3,				// between levels on the buy screen
+		DEAD: 4,				// entire party is dead
+		HIGHSCORE: 5			// viewing the high score table
 	};
-	var currentGameState = GAME_STATE.START;	// what is currently happening in the game
+	var currentGameState = GAME_STATE.START; // what is currently happening in the game
+	var currentLevel = 0;		// what level the player is on
+	var currentLevelLength = 0;	// how long this level is (how many terrains will spawn)
 	var keys = [];				// array to store pressed keys
+	var experience = 0;			// increases like score, but can be spent for upgrades
 	var score = 0;				// current score, = number of terrain objects passed
 	var highScores = [];		// array of high scores when they're loaded in
 	// Terrain
@@ -47,9 +52,23 @@ game.engine = (function(){
 	var TERRAIN_HEIGHT = 100;	// height of each terrain object, how high from the bottom it goes
 	var terrains = [];			// array to hold terrain objects
 	var TERRAIN_TYPES = {		// "enum" of terrain types
-		BASE: 0,
-		VOID: 1,
-		LAVA: 2
+		BASE: {
+			isSolid: true,
+			img: new Image()
+		},
+		VOID: {
+			isSolid: false,
+			img: new Image()
+		},
+		LAVA: {
+			isSolid: false,
+			img: new Image()
+		},
+		randomDangerous: function() {
+			if (Math.random() < 0.5)
+				return TERRAIN_TYPES.VOID;
+			return TERRAIN_TYPES.LAVA;
+		}
 	};
 	// Players
 	var players = [];			// array that holds all 3 players
@@ -76,7 +95,7 @@ game.engine = (function(){
 			health: 75,
 			img: new Image(),
 			width: 65,
-			height: 140,
+			height: 145,
 			qDur: 0,
 			qCool: 5,
 			qSnd: "arrow.wav",
@@ -89,7 +108,7 @@ game.engine = (function(){
 			health: 100,
 			img: new Image(),
 			width: 65,
-			height: 125,
+			height: 130,
 			qDur: 0,
 			qCool: 30,
 			qSnd: "fireball.wav",
@@ -101,19 +120,17 @@ game.engine = (function(){
 	// Enemies
 	var enemies = [];
 	var ENEMY_TYPES = {
-		GOBLIN: {
-			name: "Goblin",
+		GATOR: {
+			name: "GATOR",
 			health: 75,
-			color: "rgb(50, 125, 0)",
 			img: new Image(),
-			width: 85,
-			height: 85,
+			width: 100,
+			height: 60,
 			AI: "running"
 		},
 		RAT: {
 			name: "Rat",
 			health: 55,
-			color: "rgb(127, 127, 127)",
 			img: new Image(),
 			width: 100,
 			height: 50,
@@ -122,7 +139,6 @@ game.engine = (function(){
 		BAT: {
 			name: "Bat",
 			health: 50,
-			color: "rgb(75, 75, 75)",
 			img: new Image(),
 			width: 85,
 			height: 50,
@@ -133,7 +149,7 @@ game.engine = (function(){
 	var projectiles = [];
 	var PROJECTILE_TYPES = {
 		ARROW: {
-			strength: 3,
+			strength: function() { return 3 + ranger.abilities.Q.level; },
 			img: new Image(),
 			width: 45,
 			height: 13,
@@ -141,7 +157,7 @@ game.engine = (function(){
 			velocity: 2
 		},
 		FIREBALL: {
-			strength: 5,
+			strength: function() { return Math.min(8, 1 + currentLevel); },
 			img: new Image(),
 			width: 40,
 			height: 40,
@@ -149,7 +165,7 @@ game.engine = (function(){
 			velocity: -30
 		},
 		MAGIFIREBALL: {
-			strength: 3,
+			strength: function() { return 5 + magi.abilities.Q.level*1.5;},
 			img: new Image(),
 			width: 40,
 			height: 40,
@@ -172,6 +188,12 @@ game.engine = (function(){
 			gravity: true,
 			vel: function() { return new Victor(rand(10, 30), rand(-10, -30)); },
 			img: new Image()
+		},
+		FROST: {
+			collidesTerrain: false,
+			gravity: false,
+			vel: function() { return new Victor(-globalGameSpeed + rand(-0.5, 0.5), rand(-0.5, 0.5)); },
+			img: new Image()
 		}
 	}
 	
@@ -180,6 +202,7 @@ game.engine = (function(){
 	var jumpFunction = function() { return 1000/60*TERRAIN_WIDTH/globalGameSpeed; };
 	var globalLastTerrain = {};
 	var newUI = undefined;
+	var inControl = function() { return currentGameState === GAME_STATE.RUNNING; };
 	
 	
 	// Set up canvas and game variables
@@ -190,10 +213,10 @@ game.engine = (function(){
 		ctx = canvas.getContext("2d")
 		
 		// get reference to audio element
-		bgPlayer = document.querySelector('#bgAudio');
+		bgAudio = document.querySelector('#bgAudio');
 		
 		// load default song and title, and play
-		//playStream(bgPlayer);
+		//playStream(sfxPlayer);
 		loadAssets();
 		
 		// taps working as jumps 
@@ -220,9 +243,6 @@ game.engine = (function(){
 								players[i].cycleOrder(-1);
 						}
 					};
-					
-					// players are now switching positions
-					currentGameState = GAME_STATE.SWITCHING;
 				};
 				
 				// if the player has died
@@ -267,29 +287,65 @@ game.engine = (function(){
 		// callback for button presses
 		window.addEventListener("keyup", keyRelease);
 		
-		// create starting UI
+		//== Register Ability UI ==//
 		// HUD box for current abilities
-		game.windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
+		windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/6, canvas.height/8);
 		// set ability box to sandstone colors
-		game.windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
-		game.windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
-		game.windowManager.toggleUI("abilityHUD");
+		windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
+		windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
+		windowManager.toggleUI("abilityHUD");
 		// ability buttons
-		game.windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q})});
-		game.windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
-		game.windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		game.windowManager.toggleButton("abilityHUD", "ability1");
-		game.windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
-		game.windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
-		game.windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		game.windowManager.toggleButton("abilityHUD", "ability2");
-		game.windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
-		game.windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		game.windowManager.toggleButton("abilityHUD", "ability3");
+		windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q});});
+		windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
+		windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
+		windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
+		windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
+		windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
+		windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		//windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
+		//windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
+		//windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
+		//windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		//windowManager.toggleButton("abilityHUD", "ability3");
+		
+		// score HUD
+		windowManager.makeUI("scoreHUD", canvas.width-150, 0, 150, 50);
+		// set fill to gradient
+		var grad = ctx.createLinearGradient(0, 0, 150, 0);
+		grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+		grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+		windowManager.modifyUI("scoreHUD", "fill", {color: grad});
+		windowManager.toggleUI("scoreHUD");
+		// score text
+		windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
+		
+		//== Register Between-level Upgrade Shop UI ==//
+		// black background for shop window
+		windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
+		windowManager.modifyUI("shopHUD", "fill", {color: "rgba(0, 0, 0, 0.65)"});
+		// main box that makes up shop window
+		windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
+		windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
+		windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
+		// 'next level' button
+		windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
+		windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
+		windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
+		windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		//== Player ability upgrades ==//
+		// Paladin Q
+		//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
+		//windowManager.modifyButton("shopHUD", "paladinQ", "fill", {color: "#30d0ff"});
+		//windowManager.modifyButton("shopHUD", "paladinQ", "border", {color: "#0b85a8", width: 2});
+		//windowManager.modifyButton("shopHUD", "paladinQ", "text", {string: "+Shield Duration", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		//windowManager.toggleButton("shopHUD", "paladinQ");	
+		// Paladin W
+		//windowManager.makeButton("shopHUD", "paladinW", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
+		//windowManager.modifyButton("shopHUD", "paladinW", "fill", {color: "#30d0ff"});
+		//windowManager.modifyButton("shopHUD", "paladinW", "border", {color: "#0b85a8", width: 2});
+		//windowManager.modifyButton("shopHUD", "paladinW", "text", {string: "+Dash Speed", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+		//windowManager.toggleButton("shopHUD", "paladinW");	
 		
 		// BEGIN main game tick
 		update();
@@ -299,7 +355,7 @@ game.engine = (function(){
 	function setupGame() {
 		// reset variables
 		score = 0;
-		terrains = [];
+		currentLevel = 0;
 		currentGameState = GAME_STATE.RUNNING;
 		
 		// SETUP: game
@@ -307,41 +363,68 @@ game.engine = (function(){
 		players[0] = paladin = new Player(PLAYER_CLASSES.PALADIN);
 		players[1] = ranger = new Player(PLAYER_CLASSES.RANGER);
 		players[2] = magi = new Player(PLAYER_CLASSES.MAGI);
-		// one starting enemy
-		enemies[0] = new Enemy(ENEMY_TYPES.RAT);
 		
-		globalGameSpeed = 8;
-		currentTerrainType = TERRAIN_TYPES.BASE;
-		// generate initial terrain
-		for (var i = 0; i < Math.floor(canvas.width*1.5/TERRAIN_WIDTH); ++i) {
-			terrains[i] = new Terrain(i*TERRAIN_WIDTH);
-		}
-		
-		// starting variables
-		currentTerrainType = Math.round(Math.random()+1);
-		terrainCount = 2;
+		// prepare the level
+		setupLevel();
 		
 		// start music loop
 		bgAudio.play();
 	};
 	
+	// Setup the next level
+	function setupLevel() {
+		// level number and properties
+		++currentLevel;
+		currentLevelLength = 75 + currentLevel*25;
+		
+		//== Reset entities ==//
+		particles = [];
+		particleSystems = [];
+		projectiles = [];
+		
+		//== Prepare Terrain ==//
+		// reset terrains
+		terrains = [];
+		globalGameSpeed = Math.min(16, 7+currentLevel);
+		
+		// generate initial terrain
+		currentTerrainType = TERRAIN_TYPES.BASE;
+		for (var i = 0; i < Math.floor(canvas.width*1.5/TERRAIN_WIDTH); ++i) {
+			terrains[i] = new Terrain(i*TERRAIN_WIDTH);
+		}
+		
+		// set up first dangerous tiles
+		currentTerrainType = TERRAIN_TYPES.randomDangerous();
+		terrainCount = 2;
+		
+		//== Starting Enemy ==//
+		if (enemies.length === 0)
+			enemies.push(new Enemy(ENEMY_TYPES.GATOR));
+		
+		// Disable HUD and begin running!
+		windowManager.deactivateUI("shopHUD");
+		currentGameState = GAME_STATE.RUNNING;
+	};
+	
 	// Load game assets (images and sounds)
 	function loadAssets() {
 		background.src = "assets/Wall720.png";
-		baseImg.src = "assets/TileSandstone100.png";
-		lavaImg.src = "assets/lava.png";
+		TERRAIN_TYPES.BASE.img.src = "assets/TileSandstone100.png";
+		TERRAIN_TYPES.LAVA.img.src = "assets/lava.png";
 		
 		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
 		PLAYER_CLASSES.RANGER.img.src = "assets/rangerRun.png";
 		PLAYER_CLASSES.MAGI.img.src = "assets/magiRun.png";
 		
 		ENEMY_TYPES.RAT.img.src = "assets/ratRun.png";
+		ENEMY_TYPES.BAT.img.src = "assets/batRun.png";
+		ENEMY_TYPES.GATOR.img.src = "assets/gatorRun.png";
 		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.FIREBALL.img.src = PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
 		
 		PARTICLE_TYPES.FLAME.img.src = "assets/flameParticle.png";
-		PARTICLE_TYPES.ICE.img.src = "assets/iceParticle.png";
+		PARTICLE_TYPES.ICE.img.src = PARTICLE_TYPES.FROST.img.src = "assets/iceParticle.png";
 	};
 	
 	// play a sound effect
@@ -377,7 +460,7 @@ game.engine = (function(){
 				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
 				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
 				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
-				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
+				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design & Audio: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
 			}
 			return;
 		}
@@ -408,8 +491,32 @@ game.engine = (function(){
 		};
 	 	
 	 	// if paused, bail out of loop
-		if (paused && currentGameState === GAME_STATE.RUNNING) {
+		if (currentGameState === GAME_STATE.PAUSED) {
 			return;
+		}
+		
+		// push to between screen if the level is finished
+		if (currentLevelLength <= 0 && currentGameState != GAME_STATE.BETWEEN) {
+			// check if there's any dangerous terrains left on screen
+			var stillDangerous = false;
+			for (var i = 0; i < terrains.length; ++i)
+				if (terrains[i].terrainType != TERRAIN_TYPES.BASE) {
+					stillDangerous = true;
+					break;
+				}
+			
+			// only go to between level state once the dangerous has passed
+			if (!stillDangerous) {
+				// set to between state
+				currentGameState = GAME_STATE.BETWEEN;
+				
+				// enable upgrade screen UI
+				windowManager.toggleUI("shopHUD");
+				
+				// reset player abilities
+				for (var i = 0; i < players.length; ++i)
+					players[i].abilities.reset();
+			}
 		}
 		
 		// if there are no players left, end the game
@@ -418,21 +525,18 @@ game.engine = (function(){
 		
 		// Switch party order with left or right arrow keys
 		// loop and cycle if they aren't switching already
-		if (currentGameState == GAME_STATE.RUNNING) {
+		if (currentGameState === GAME_STATE.RUNNING) {
 			for (var i = 0; i < players.length; ++i) {
 				// only cycle living players
 				if (players[i].deathTime == 0) {
 					// left click - cycle left
 					if (keys[KEY.LEFT]) {
 						players[i].cycleOrder(1);
-						currentGameState = GAME_STATE.SWITCHING;
 					}
 					// right click - cycle right
 					else
 					if (keys[KEY.RIGHT]) {
-						players[i].cycleOrder(-1);			
-						// players are now switching positions
-						currentGameState = GAME_STATE.SWITCHING;
+						players[i].cycleOrder(-1);
 					}
 				}
 			};
@@ -449,9 +553,16 @@ game.engine = (function(){
 		// update players
 		var numDead = 0;
 		for (var i = 0; i < players.length; ++i) {
-			// if player is alive, update
-			if (players[i].deathTime == 0)
-				players[i].update();
+			// if player is alive, attempt an update
+			if (players[i].deathTime == 0) {
+				// only actually update if player is in control or they're off the ground
+				// we also update if they're off the ground so they don't freeze midair between levels
+				if (inControl() || !players[i].onGround)
+					players[i].update();
+				// otherwise, just do the draw
+				else
+					players[i].draw();
+			}
 				
 			// if they're dead, increment death counter and respawn if it's been long enough
 			else {
@@ -508,7 +619,7 @@ game.engine = (function(){
 		// add an enemy if there isn't one
 		if (enemies.length === 0) {
 			switch(Math.round(rand(0, 2))) {
-				case 0: enemies.push(new Enemy(ENEMY_TYPES.GOBLIN));
+				case 0: enemies.push(new Enemy(ENEMY_TYPES.GATOR));
 					break;
 				case 1: enemies.push(new Enemy(ENEMY_TYPES.RAT));
 					break;
@@ -519,7 +630,12 @@ game.engine = (function(){
 		
 		// update enemies
 		for (var i = 0; i < enemies.length; ++i) {
-			enemies[i].update();
+			// only actually update enemies if player is in control
+			if (inControl())
+				enemies[i].update();
+			// otherwise, just do the draw
+			else
+				enemies[i].draw();
 		};
 		
 		// update projectiles
@@ -538,11 +654,13 @@ game.engine = (function(){
 			// delete the object if it has gone off screen a bit
 			if (currentTerrain.position.x < -TERRAIN_WIDTH*2) {
 				terrains.splice(i, 1);
-				// speed up the game very slightly for each passed terrain
-				globalGameSpeed = Math.min(15, globalGameSpeed+0.02);
-				// add 1 point for each passed terrain if the game is running
-				if (currentGameState == GAME_STATE.RUNNING || currentGameState == GAME_STATE.SWITCHING)
+				
+				// in/decrement game variables if the game is running
+				if (inControl()) {
 					++score;
+					++experience;
+					--currentLevelLength;
+				}
 			}
 		}
 		
@@ -556,8 +674,8 @@ game.engine = (function(){
 			
 			// check if we've reached the end of this terrain type
 			if (terrainCount <= 0) {
-				// force base ground to generate after each other terrain type
-				if (currentTerrainType != TERRAIN_TYPES.BASE) {
+				// force base ground to generate after each other terrain type or at the end of the level
+				if (currentTerrainType != TERRAIN_TYPES.BASE || currentLevelLength <= 0) {
 					currentTerrainType = TERRAIN_TYPES.BASE;
 					// ground patches get shorter as game speeds up
 					terrainCount = Math.max(3, Math.round(15 - globalGameSpeed*.75));
@@ -565,7 +683,8 @@ game.engine = (function(){
 				// otherwise, generate another "danger terrain"
 				else {
 					// terrain type becomes random danger
-					currentTerrainType = Math.round(Math.random()+1);
+					currentTerrainType = TERRAIN_TYPES.randomDangerous();
+					
 					// danger patches get larger as game speeds up
 					terrainCount = Math.min(5, Math.floor(Math.random()*globalGameSpeed/5) + 2);
 				}
@@ -579,18 +698,18 @@ game.engine = (function(){
 		for (var i = 0; i < particles.length; ++i)
 			particles[i].update();
 		
-		// draw HUD
+		// draw HUDs
 		if (currentGameState != GAME_STATE.DEAD) {
-			game.windowManager.updateAndDraw([]);
-		
+			game.windowManager.updateAndDraw([{name:"score", value:[score]}]);
+			
 			// draw score in upper right
-			var grad = ctx.createLinearGradient(0, 0, 150, 0);
-			grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-			grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-			ctx.fillStyle = grad;
-			ctx.fillRect(canvas.width-150, 0, 150, 50);
-			fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
-			ctx.fill();
+			//var grad = ctx.createLinearGradient(0, 0, 150, 0);
+			//grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+			//grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+			//ctx.fillStyle = grad;
+			//ctx.fillRect(canvas.width-150, 0, 150, 50);
+			//fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
+			//ctx.fill();
 		}
 		// draw death screen if player has died
 		else {
@@ -700,12 +819,14 @@ game.engine = (function(){
 		
 		// check if the magi ice bridge is active, and if so, freeze this terrain
 		if (magi != {})
-			if (magi.abilities.W.duration > 0 && magi.deathTime == 0)
+			if (magi.abilities.W.duration > 0 && magi.deathTime == 0) {
 				this.iced = true;
+				particleSystems.push(new ParticleSystem(this, PARTICLE_TYPES.FROST, -1, 120, 0.15));
+			}
 		
 		// FUNCTION: returns if the terrain is solid
 		this.isSolid = function() {
-			return this.terrainType === TERRAIN_TYPES.BASE || this.iced;
+			return this.terrainType.isSolid || this.iced;
 		}
 		
 		// FUNCTION: update terrain position, draw it
@@ -737,19 +858,9 @@ game.engine = (function(){
 			
 			// draw the terrain object
 			ctx.save();
-			switch(this.terrainType) {
-				// void, do nothing
-				case TERRAIN_TYPES.VOID:
-					break;
-				// base terrain
-				case TERRAIN_TYPES.BASE:
-					ctx.drawImage(baseImg, this.position.x, this.position.y);
-					break;
-				// lava
-				case TERRAIN_TYPES.LAVA:
-					ctx.drawImage(lavaImg, this.position.x, this.position.y);
-					break;
-			};
+			
+			if (this.terrainType != TERRAIN_TYPES.VOID)
+				ctx.drawImage(this.terrainType.img, this.position.x, this.position.y);
 			
 			// check if it's been frozen by the wizard
 			if (this.iced) {
@@ -783,18 +894,24 @@ game.engine = (function(){
 			Q: {
 				duration: 0,
 				cooldown: 0,
+				level: 0,
 				maxDur: this.classType.qDur,
-				maxCool: this.classType.qCool
+				maxCool: this.classType.qCool,
+				levelUp: function() {
+					console.log(this);
+				}
 			},
 			W: {
 				duration: 0,
 				cooldown: 0,
+				level: 0,
 				maxDur: this.classType.wDur,
 				maxCool: this.classType.wCool
 			},
 			E: {
 				duration: 0,
 				cooldown: 0,
+				level: 0,
 				maxDur: this.classType.wDur,
 				maxCool: this.classType.wCool
 			},
@@ -840,14 +957,7 @@ game.engine = (function(){
 		};
 		
 		// FUNCTION: main player object tick
-		this.update = function() {	
-			// increment timing for animation
-			if (this.onGround)
-				this.time = (this.time+0.75) % 28;
-			else
-				if (this.time != 0 && this.time != 13)
-					this.time = Math.round(this.time+1) % 28;
-					
+		this.update = function() {					
 			// occasionally play running sfx
 			if (this.onGround && time % 15 + this.order == 0)
 				playStream("run.wav", 0.175);
@@ -892,17 +1002,6 @@ game.engine = (function(){
 					else {
 						this.position.x -= Math.sign(this.position.x - (275 - this.order*100))*5;
 					};
-				};
-					
-				// loop players and update game state if they're done switching
-				if (currentGameState == GAME_STATE.SWITCHING) {
-					var allSwitched = true;
-					for (var i = 0; i < players.length; ++i)
-						if (players[i].position.x != 275 - players[i].order*100 && players[i].deathTime == 0)
-							allSwitched = false;
-							
-					if (allSwitched)
-						currentGameState = GAME_STATE.RUNNING;
 				};
 			};
 			
@@ -979,6 +1078,13 @@ game.engine = (function(){
 		
 		// FUNCTION: main player draw call
 		this.draw = function() {
+			// increment timing for animation
+			if (this.onGround)
+				this.time = (this.time+0.75) % 28;
+			else
+				if (this.time != 0 && this.time != 13)
+					this.time = Math.round(this.time+1) % 28;
+					
 			ctx.save();
 			// draw the player's actual image from its spritesheet
 			ctx.drawImage(this.classType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
@@ -1016,8 +1122,8 @@ game.engine = (function(){
 		/* ATTACKING */
 		// FUNCTION: 1st attack ('Q')
 		this.baseAttack = function() {
-			// if the ability is off cooldown, activate it
-			if (this.abilities.Q.cooldown === 0) {
+			// if the player is in control and the ability is off cooldown, activate it
+			if (this.abilities.Q.cooldown === 0 && inControl()) {
 				// play the ability's sound effect
 				playStream(this.classType.qSnd, 0.2);
 				
@@ -1045,8 +1151,8 @@ game.engine = (function(){
 		
 		// FUNCTION: 2nd attack ('W')
 		this.midAttack = function() {
-			// if the ability is off cooldown, activate it
-			if (this.abilities.W.cooldown === 0) {
+			// if player is in control and the ability is off cooldown, activate it
+			if (this.abilities.W.cooldown === 0 && inControl()) {
 				// play the ability's sound effect
 				playStream(this.classType.wSnd, 0.2);
 				
@@ -1072,8 +1178,9 @@ game.engine = (function(){
 						if (this.position.y + this.bounds.y <= canvas.height - TERRAIN_HEIGHT) {
 							for (var i = 0; i < terrains.length; ++i) {
 								terrains[i].iced = true;
-								particleSystems.push(new ParticleSystem(this, PARTICLE_TYPES.ICE, 30, -1, 0.1));
+								particleSystems.push(new ParticleSystem(terrains[i], PARTICLE_TYPES.FROST, -1, 120, 0.15));
 							}
+							particleSystems.push(new ParticleSystem(this, PARTICLE_TYPES.ICE, 30, -1, 1));
 							this.abilities.W.duration = this.abilities.W.maxDur;
 							this.abilities.W.cooldown = this.abilities.W.maxCool;
 						}
@@ -1116,7 +1223,7 @@ game.engine = (function(){
 		switch (this.projType) {
 			case PROJECTILE_TYPES.FIREBALL:
 			case PROJECTILE_TYPES.MAGIFIREBALL:
-				this.system = new ParticleSystem(this, PARTICLE_TYPES.FLAME, -1, 10, 20);
+				this.system = new ParticleSystem(this, PARTICLE_TYPES.FLAME, -1, 10, 5);
 				particleSystems.push(this.system);
 				break;
 		};
@@ -1226,7 +1333,8 @@ game.engine = (function(){
 			else {
 				// only attempt to damage living objects
 				if (!(victim instanceof Terrain)) {
-					victim.damage(this.projType.strength);
+					victim.damage(this.projType.strength());
+					particleSystems.push(new ParticleSystem(victim, PARTICLE_TYPES.FLAME, 60, 30, 5));
 				
 					// if this is a magi fireball, ignite the enemy
 					if (this.projType === PROJECTILE_TYPES.MAGIFIREBALL)
@@ -1257,7 +1365,6 @@ game.engine = (function(){
 		/* VARIABLES */
 		this.enemyType = enemyType;		// what type of enemy this is
 		this.maxJumps = 3;				// max number of jumps they can do in sequence
-		this.color = this.enemyType.color; // color enemy will draw at if they have no image
 		this.time = 0; // controls sprite animation timing
 		this.health = this.maxHealth = this.enemyType.health; // get health and max health of this enemy type
 		this.bounds = new Victor(
@@ -1270,7 +1377,8 @@ game.engine = (function(){
 		);
 		this.frameWidth = this.enemyType.img.width/28; // width of 1 frame from the spritesheet
 		this.frameHeight = this.enemyType.img.height;  // height of 1 frame from the spritesheet
-		this.offset = new Victor(0, this.frameHeight/-4); // player's image offset
+		this.offset = new Victor(this.frameWidth/-4, this.frameHeight/-4); // enemys's image offset
+		//if (this.enemyType != ENEMY_TYPES.RAT) this.offset.x = this.frameWidth/-4; // bat and gator images displays more to the left
 		
 		// set target differently depending on AI
 		switch (this.enemyType.AI) {
@@ -1296,18 +1404,12 @@ game.engine = (function(){
 		};
 		
 		// FUNCTION: main enemy object tick
-		this.update = function() {
-			// increment timing for animation
-			if (this.onGround)
-				this.time = (this.time+0.75) % 28;
-			else
-				if (this.time != 0 && this.time != 13)
-					this.time = Math.round(this.time+1) % 28;
-					
+		this.update = function() {					
 			// kill enemy if off screen or dead
 			if (this.position.y > canvas.height*2 || this.health <= 0) {
 				// award points equal to its starting health
 				score += this.enemyType.health;
+				experience += this.enemyType.health;
 				
 				// delete this one
 				enemies.splice(enemies.indexOf(this), 1);
@@ -1441,13 +1543,16 @@ game.engine = (function(){
 	
 		// FUCNTION: main enemy draw call
 		this.draw = function() {
-			ctx.save();
-			ctx.fillStyle = this.color;
-			// rats have completed art, so draw their sprite from their sheet
-			if (this.enemyType === ENEMY_TYPES.RAT)
-				ctx.drawImage(this.enemyType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
+			// increment timing for animation
+			if (this.onGround || this.enemyType.AI === "flying")
+				this.time = (this.time+0.75) % 28;
 			else
-				ctx.fillRect(this.position.x, this.position.y, this.bounds.x, this.bounds.y);
+				if (this.time != 0 && this.time != 13)
+					this.time = Math.round(this.time+1) % 28;
+					
+			ctx.save();
+			// rats have completed art, so draw their sprite from their sheet
+			ctx.drawImage(this.enemyType.img, this.frameWidth*Math.floor(this.time), 0, this.frameWidth, this.frameHeight, this.position.x + this.offset.x, this.position.y + this.offset.y, this.frameWidth, this.frameHeight);
 			
 			// draw health above head
 			ctx.fillStyle = "red";
@@ -1501,11 +1606,12 @@ game.engine = (function(){
 		MobileObject.call(this);
 	
 		// assign starting variables
+		this.parent = parent;
 		this.particleType = particleType;	// what type of particle this is
 		this.deathtime = 0; 				// used to kill particles if they don't die naturally
 		this.lifetime = lifetime;
-		this.position = parent.position;
-		this.velocity = this.particleType.vel();
+		this.position = new Victor(parent.root.position.x + parent.root.bounds.x/10 + Math.random()*parent.root.bounds.x*0.8, parent.root.position.y + parent.root.bounds.y/10 + Math.random()*parent.root.bounds.y*0.8);
+		this.velocity = this.particleType.vel.call(this);
 		this.bounds = new Victor(3, 3);
 		this.time = 0;
 		
@@ -1588,11 +1694,12 @@ game.engine = (function(){
 	function pauseGame() {
 		// since pause can be called multiple ways
 		// prevents multiple redraws of pause screen
-		if (!paused) {
-			paused = true;
+		if (currentGameState != GAME_STATE.PAUSED) {
+			currentGameState = GAME_STATE.PAUSED;
+			bgAudio.pause();
 			
 			// stop the animation loop if the player is alive
-			if (currentGameState == GAME_STATE.RUNNING)
+			if (currentGameState === GAME_STATE.RUNNING)
 				cancelAnimationFrame(animationID);
 			
 			// draw the pause screen
@@ -1600,20 +1707,24 @@ game.engine = (function(){
 			ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			fillText(ctx, "Paused", canvas.width/2, canvas.height/2, "30pt Calibri", "white");
+			fillText(ctx, "Press P to unpause", canvas.width/2, canvas.height/2+40, "24pt Calibri", "white");
 			ctx.restore();
 		};
 	};
 	
 	// RESUME FUNCTION: resumes the game
 	function resumeGame() {
-		paused = false;
-		
-		// forcibly end animation loop in case it's running
-		// only end the loop if the player is alive
-		if (currentGameState == GAME_STATE.RUNNING) {
-			cancelAnimationFrame(animationID);
-			// resume ticking
-			update();
+		if (currentGameState === GAME_STATE.PAUSED) {
+			currentGameState = GAME_STATE.RUNNING;
+			bgAudio.play();
+			
+			// forcibly end animation loop in case it's running
+			// only end the loop if the player is alive
+			if (currentGameState === GAME_STATE.RUNNING) {
+				cancelAnimationFrame(animationID);
+				// resume ticking
+				update();
+			}
 		}
 	};
 	
@@ -1632,6 +1743,18 @@ game.engine = (function(){
 					setTimeout(players[i].jump, players[i].order*jumpFunction(), 15, 1, false);
 					globalLastTerrain = terrains[terrains.length-1];
 				}
+			};
+			
+			// if the player has died, restart the game
+			if (currentGameState === GAME_STATE.DEAD) {
+				currentGameState = GAME_STATE.START;
+			};
+			
+			// if we're in between levels, move on to the next one
+			if (currentGameState === GAME_STATE.BETWEEN) {
+				// disable upgrade shop UI
+				windowManager.toggleUI("shopHUD");
+				setupLevel();
 			};
 			
 			// prevent spacebar page scrolling
@@ -1659,7 +1782,7 @@ game.engine = (function(){
 		// p - toggle game paused
 		if (e.keyCode === KEY.P) {
 			// check if paused, and toggle it
-			if (paused)
+			if (currentGameState === GAME_STATE.PAUSED)
 				resumeGame();
 			else
 				pauseGame();
@@ -1693,17 +1816,6 @@ game.engine = (function(){
 	// FUNCTION: do things based on key releases
 	function keyRelease(e) {
 		keys[e.keyCode] = false;
-		// spacebar - jump!
-		if (e.keyCode == KEY.SPACE) {
-			// prevent spacebar page scrolling
-			e.preventDefault();
-			 
-			// if the player has died
-			if (currentGameState === GAME_STATE.DEAD) {
-				// restart the game
-				currentGameState = GAME_STATE.START;
-			};
-		};
 	};
 	
 	// FUNCTION: calculate the delta time, used for animation and physics
@@ -1719,7 +1831,11 @@ game.engine = (function(){
 	// return public interface for engine module
 	return {
 		init: init,
+		paladin: paladin,
+		ranger: ranger,
+		magi: magi,
 		setupGame: setupGame,
+		setupLevel: setupLevel,
 		loadAssets: loadAssets,
 		playStream: playStream,
 		update: update,
