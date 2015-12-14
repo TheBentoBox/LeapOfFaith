@@ -15,7 +15,6 @@ game.engine = (function(){
 	var canvas,ctx;				// canvas references
 	var mouseX, mouseY;			// mouse coordinates
 	var animationID;			// stores animation ID of animation frame
-	var paused = false;			// if the game is paused
 	var mouseDown = false;		// if the mouse is being held down
 	var uiClicked = false;		// if UI was clicked
 	var mouse = {};				// the mouse object
@@ -34,7 +33,7 @@ game.engine = (function(){
 	var GAME_STATE = {			// "enum" of the current status of the game
 		START: 0,				// start screen
 		RUNNING: 1,				// players are alive and running
-		SWITCHING: 2,			// players are swapping positions
+		PAUSED: 2,			// players are swapping positions
 		BETWEEN: 3,				// between levels on the buy screen
 		DEAD: 4,				// entire party is dead
 		HIGHSCORE: 5			// viewing the high score table
@@ -203,7 +202,7 @@ game.engine = (function(){
 	var jumpFunction = function() { return 1000/60*TERRAIN_WIDTH/globalGameSpeed; };
 	var globalLastTerrain = {};
 	var newUI = undefined;
-	var inControl = function() { return currentGameState === GAME_STATE.RUNNING || currentGameState === GAME_STATE.SWITCHING; };
+	var inControl = function() { return currentGameState === GAME_STATE.RUNNING; };
 	
 	
 	// Set up canvas and game variables
@@ -244,9 +243,6 @@ game.engine = (function(){
 								players[i].cycleOrder(-1);
 						}
 					};
-					
-					// players are now switching positions
-					currentGameState = GAME_STATE.SWITCHING;
 				};
 				
 				// if the player has died
@@ -303,12 +299,10 @@ game.engine = (function(){
 		windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
 		windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
 		windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		windowManager.toggleButton("abilityHUD", "ability1");
 		windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
 		windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
 		windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
 		windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		windowManager.toggleButton("abilityHUD", "ability2");
 		//windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
 		//windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
 		//windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
@@ -325,7 +319,6 @@ game.engine = (function(){
 		windowManager.toggleUI("scoreHUD");
 		// score text
 		windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
-		windowManager.toggleText("scoreHUD", "score");
 		
 		//== Register Between-level Upgrade Shop UI ==//
 		// black background for shop window
@@ -335,13 +328,11 @@ game.engine = (function(){
 		windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
 		windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
 		windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
-		windowManager.toggleButton("shopHUD", "mainPanel");
 		// 'next level' button
 		windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
 		windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
 		windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
 		windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		windowManager.toggleButton("shopHUD", "nextLevel");
 		//== Player ability upgrades ==//
 		// Paladin Q
 		//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
@@ -407,10 +398,11 @@ game.engine = (function(){
 		terrainCount = 2;
 		
 		//== Starting Enemy ==//
-		enemies[0] = new Enemy(ENEMY_TYPES.GATOR);
+		if (enemies.length === 0)
+			enemies.push(new Enemy(ENEMY_TYPES.GATOR));
 		
 		// Disable HUD and begin running!
-		windowManager.deactivate("shopHUD");
+		windowManager.deactivateUI("shopHUD");
 		currentGameState = GAME_STATE.RUNNING;
 	};
 	
@@ -499,7 +491,7 @@ game.engine = (function(){
 		};
 	 	
 	 	// if paused, bail out of loop
-		if (paused && currentGameState === GAME_STATE.RUNNING) {
+		if (currentGameState === GAME_STATE.PAUSED) {
 			return;
 		}
 		
@@ -540,14 +532,11 @@ game.engine = (function(){
 					// left click - cycle left
 					if (keys[KEY.LEFT]) {
 						players[i].cycleOrder(1);
-						currentGameState = GAME_STATE.SWITCHING;
 					}
 					// right click - cycle right
 					else
 					if (keys[KEY.RIGHT]) {
-						players[i].cycleOrder(-1);			
-						// players are now switching positions
-						currentGameState = GAME_STATE.SWITCHING;
+						players[i].cycleOrder(-1);
 					}
 				}
 			};
@@ -667,7 +656,7 @@ game.engine = (function(){
 				terrains.splice(i, 1);
 				
 				// in/decrement game variables if the game is running
-				if (currentGameState == GAME_STATE.RUNNING || currentGameState == GAME_STATE.SWITCHING) {
+				if (inControl()) {
 					++score;
 					++experience;
 					--currentLevelLength;
@@ -1013,17 +1002,6 @@ game.engine = (function(){
 					else {
 						this.position.x -= Math.sign(this.position.x - (275 - this.order*100))*5;
 					};
-				};
-					
-				// loop players and update game state if they're done switching
-				if (currentGameState == GAME_STATE.SWITCHING) {
-					var allSwitched = true;
-					for (var i = 0; i < players.length; ++i)
-						if (players[i].position.x != 275 - players[i].order*100 && players[i].deathTime == 0)
-							allSwitched = false;
-							
-					if (allSwitched)
-						currentGameState = GAME_STATE.RUNNING;
 				};
 			};
 			
@@ -1716,12 +1694,12 @@ game.engine = (function(){
 	function pauseGame() {
 		// since pause can be called multiple ways
 		// prevents multiple redraws of pause screen
-		if (!paused) {
-			paused = true;
+		if (currentGameState != GAME_STATE.PAUSED) {
+			currentGameState = GAME_STATE.PAUSED;
 			bgAudio.pause();
 			
 			// stop the animation loop if the player is alive
-			if (currentGameState == GAME_STATE.RUNNING)
+			if (currentGameState === GAME_STATE.RUNNING)
 				cancelAnimationFrame(animationID);
 			
 			// draw the pause screen
@@ -1736,15 +1714,17 @@ game.engine = (function(){
 	
 	// RESUME FUNCTION: resumes the game
 	function resumeGame() {
-		paused = false;
-		bgAudio.play();
-		
-		// forcibly end animation loop in case it's running
-		// only end the loop if the player is alive
-		if (currentGameState == GAME_STATE.RUNNING) {
-			cancelAnimationFrame(animationID);
-			// resume ticking
-			update();
+		if (currentGameState === GAME_STATE.PAUSED) {
+			currentGameState = GAME_STATE.RUNNING;
+			bgAudio.play();
+			
+			// forcibly end animation loop in case it's running
+			// only end the loop if the player is alive
+			if (currentGameState === GAME_STATE.RUNNING) {
+				cancelAnimationFrame(animationID);
+				// resume ticking
+				update();
+			}
 		}
 	};
 	
@@ -1763,6 +1743,18 @@ game.engine = (function(){
 					setTimeout(players[i].jump, players[i].order*jumpFunction(), 15, 1, false);
 					globalLastTerrain = terrains[terrains.length-1];
 				}
+			};
+			
+			// if the player has died, restart the game
+			if (currentGameState === GAME_STATE.DEAD) {
+				currentGameState = GAME_STATE.START;
+			};
+			
+			// if we're in between levels, move on to the next one
+			if (currentGameState === GAME_STATE.BETWEEN) {
+				// disable upgrade shop UI
+				windowManager.toggleUI("shopHUD");
+				setupLevel();
 			};
 			
 			// prevent spacebar page scrolling
@@ -1790,7 +1782,7 @@ game.engine = (function(){
 		// p - toggle game paused
 		if (e.keyCode === KEY.P) {
 			// check if paused, and toggle it
-			if (paused)
+			if (currentGameState === GAME_STATE.PAUSED)
 				resumeGame();
 			else
 				pauseGame();
@@ -1824,22 +1816,6 @@ game.engine = (function(){
 	// FUNCTION: do things based on key releases
 	function keyRelease(e) {
 		keys[e.keyCode] = false;
-		// spacebar - jump!
-		if (e.keyCode == KEY.SPACE) {
-			// prevent spacebar page scrolling
-			e.preventDefault();
-			 
-			// if the player has died, restart the game
-			if (currentGameState === GAME_STATE.DEAD) {
-				currentGameState = GAME_STATE.START;
-			};
-			// if we're in between levels, move on to the next one
-			if (currentGameState === GAME_STATE.BETWEEN) {
-				// disable upgrade shop UI
-				windowManager.toggleUI("shopHUD");
-				setupLevel();
-			};
-		};
 	};
 	
 	// FUNCTION: calculate the delta time, used for animation and physics

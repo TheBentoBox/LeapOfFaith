@@ -13,10 +13,3 @@ window.onload = function(){
 window.onblur = function() {
 	game.engine.pauseGame();
 };
-
-window.onfocus = function() {
-	game.engine.resumeGame();
-};
-
-// callback for button presses
-window.addEventListener("keydown", game.engine.keyPress);
