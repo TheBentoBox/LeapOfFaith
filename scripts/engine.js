@@ -588,7 +588,7 @@ game.engine = (function(){
 			//== End Player ==//}
 			
 			//== Upgrade Shop UI ==//{
-				windowManager.makeUI("shopScreen", canvas.width/4, canvas.height/8, canvas.width/2, canvas.height*.73);
+				windowManager.makeUI("shopScreen", canvas.width/4, canvas.height/8, canvas.width/1.85, canvas.height*.73);
 				windowManager.modifyUI("shopScreen", "fill", {color: "#ddce8f"});
 				windowManager.modifyUI("shopScreen", "border", {color: "#b7a86d", width: 4});
 				
@@ -616,7 +616,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "paladinQText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "paladinQButton", 20, 180, 100, 30, function() {paladin.abilities.Q.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "paladinQButton", 20, 180, 100, 30, function() {paladin.abilities.Q.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "paladinQButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "paladinQButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "paladinQButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -631,7 +631,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "paladinWText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "paladinWButton", 20, 320, 100, 30, function() {paladin.abilities.W.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "paladinWButton", 20, 320, 100, 30, function() {paladin.abilities.W.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "paladinWButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "paladinWButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "paladinWButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -639,14 +639,13 @@ game.engine = (function(){
 						// E
 						windowManager.makeText("shopScreen", "paladinEText", 20, 360, canvas.width*.25, "default", 
 							"Heal%n" +
-							"Duration: 0%n" +
 							"Cooldown: 0%n" +
 							"Cost: 0%n",
 							"14pt 'Uncial Antiqua'", "#666044"
 						);
 						windowManager.modifyText("shopScreen", "paladinEText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "paladinEButton", 20, 460, 100, 30, function() {paladin.abilities.E.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "paladinEButton", 20, 460, 100, 30, function() {paladin.abilities.E.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "paladinEButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "paladinEButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "paladinEButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -663,7 +662,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "rangerQText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "rangerQButton", canvas.width*.19, 180, 100, 30, function() {ranger.abilities.Q.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "rangerQButton", canvas.width*.19, 180, 100, 30, function() {ranger.abilities.Q.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "rangerQButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "rangerQButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "rangerQButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -677,7 +676,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "rangerWText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "rangerWButton", canvas.width*.19, 320, 100, 30, function() {ranger.abilities.W.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "rangerWButton", canvas.width*.19, 320, 100, 30, function() {ranger.abilities.W.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "rangerWButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "rangerWButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "rangerWButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -692,7 +691,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "rangerEText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "rangerEButton", canvas.width*.19, 460, 100, 30, function() {ranger.abilities.E.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "rangerEButton", canvas.width*.19, 460, 100, 30, function() {ranger.abilities.E.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "rangerEButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "rangerEButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "rangerEButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -709,7 +708,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "magiQText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "magiQButton", canvas.width*.37, 180, 100, 30, function() {magi.abilities.Q.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "magiQButton", canvas.width*.37, 180, 100, 30, function() {magi.abilities.Q.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "magiQButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "magiQButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "magiQButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -724,7 +723,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "magiWText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "magiWButton", canvas.width*.37, 320, 100, 30, function() {magi.abilities.W.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "magiWButton", canvas.width*.37, 320, 100, 30, function() {magi.abilities.W.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "magiWButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "magiWButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "magiWButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -739,7 +738,7 @@ game.engine = (function(){
 						);
 						windowManager.modifyText("shopScreen", "magiEText", "padding", {top: 5, right: 0, bottom: 0, left: 5, line: 5});
 						
-						windowManager.makeButton("shopScreen", "magiEButton", canvas.width*.37, 460, 100, 30, function() {magi.abilities.E.levelUp();}.bind(game.engine));
+						windowManager.makeButton("shopScreen", "magiEButton", canvas.width*.37, 460, 100, 30, function() {magi.abilities.E.levelUp(); upgrade();}.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "magiEButton", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "magiEButton", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "magiEButton", "text", {string: "Upgrade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -756,7 +755,7 @@ game.engine = (function(){
 	function setupGame() {
 		// reset variables
 		score = 0;
-		experience = 10000;
+		experience = 0;
 		currentLevel = 0;
 		currentGameState = GAME_STATE.RUNNING;
 		
@@ -790,7 +789,7 @@ game.engine = (function(){
 	function setupLevel() {
 		// level number and properties
 		++currentLevel;
-		currentLevelLength = (currentLevel*25);// + 75;
+		currentLevelLength = (currentLevel*25) + 75;
 		
 		//== Reset entities ==//
 		particles = [];
@@ -2408,6 +2407,96 @@ game.engine = (function(){
 	function upgrade() {
 		// update level complete text
 		windowManager.modifyText("shopScreen", "levelComplete", "text", {string: "Level " + currentLevel + " complete!", css: "18pt 'Uncial Antiqua'", color: "#666044"});
+		
+		// update experience text
+		windowManager.modifyText("shopScreen", "shopExp", "text", {string: "Experience: " + experience, css: "14pt 'Uncial Antiqua'", color: "#666044"});
+		
+		//== Update Abilities ==//{
+			//== Paladin ==//{
+				// Q
+				windowManager.modifyText("shopScreen", "paladinQText", "text", {string:
+					"Shield%n" +
+					"Duration: " + (paladin.abilities.Q.maxDur/60).toFixed(1) + " sec%n" +
+					"Cooldown: " + (paladin.abilities.Q.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + paladin.abilities.Q.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+				
+				// W
+				windowManager.modifyText("shopScreen", "paladinWText", "text", {string:
+					"Dash%n" +
+					"Duration: " + (paladin.abilities.W.maxDur/60).toFixed(1) + " sec%n" +
+					"Cooldown: " + (paladin.abilities.W.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + paladin.abilities.W.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+				
+				// E
+				windowManager.modifyText("shopScreen", "paladinEText", "text", {string:
+					"Heal%n" +
+					"Cooldown: " + (paladin.abilities.E.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + paladin.abilities.E.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+			//== End Paladin ==//}
+			
+			//== Ranger ==//{
+				// Q
+				windowManager.modifyText("shopScreen", "rangerQText", "text", {string:
+					"Arrow%n" +
+					"Damage: " + ranger.abilities.Q.strength() + "%n" +
+					"Cooldown: " + (ranger.abilities.Q.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + ranger.abilities.Q.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+				
+				// W
+				windowManager.modifyText("shopScreen", "rangerWText", "text", {string:
+					"Jump%n" +
+					"Cooldown: " + (ranger.abilities.W.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + ranger.abilities.W.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+				
+				// E
+				windowManager.modifyText("shopScreen", "rangerEText", "text", {string:
+					"Grenade%n" +
+					"Damage: " + ranger.abilities.E.strength() + "%n" +
+					"Cooldown: " + (ranger.abilities.E.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + ranger.abilities.E.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+			//== End Ranger ==//}
+			
+			//== Magi ==//{
+				// Q
+				windowManager.modifyText("shopScreen", "magiQText", "text", {string:
+					"Fireball%n" +
+					"Damage: " + magi.abilities.Q.strength() + "%n" +
+					"Cooldown: " + (magi.abilities.Q.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + magi.abilities.Q.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+				
+				// W
+				windowManager.modifyText("shopScreen", "magiWText", "text", {string:
+					"Ice Bridge%n" +
+					"Duration: " + (magi.abilities.W.maxDur/60).toFixed(1) + " sec%n" +
+					"Cooldown: " + (magi.abilities.W.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + magi.abilities.W.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+				
+				// E
+				windowManager.modifyText("shopScreen", "magiEText", "text", {string:
+					"Stun%n" +
+					"Duration: " + (magi.abilities.E.maxDur/60).toFixed(1) + " sec%n" +
+					"Cooldown: " + (magi.abilities.E.maxCool/60).toFixed(1) + " sec%n" +
+					"Cost: " + magi.abilities.E.upgradeCost() + " XP%n",
+					css: "14pt 'Uncial Antiqua'", color: "#666044"
+				});
+			//== End Magi ==//}
+		//== End Abilities ==//}
 		
 		// activate upgrade screen
 		windowManager.activateUI("shopScreen");
