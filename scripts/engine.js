@@ -25,6 +25,10 @@ game.engine = (function(){
 	//}
 	
 	//== ASSETS ==//{
+		//== Interfaces ==//{
+			var titleBg = new Image();
+		//}
+		
 		//== World ==//{
 			var background = new Image();
 		//== End World ==//}
@@ -104,12 +108,15 @@ game.engine = (function(){
 			height: 150,
 			qDur: 250,
 			qCool: 450,
+			qCost: function() { return 30 + this.level*20; },
 			qSnd: "shield.mp3",
 			wDur: 18,
 			wCool: 400,
+			wCost: function() { return 30 + this.level*15; },
 			wSnd: "whoosh.mp3",
 			eDur: 0,
 			eCool: 2000,
+			eCost: function() { return 50 + this.level*75; },
 			eSnd: "heal.mp3"
 		},
 		RANGER: {
@@ -120,12 +127,15 @@ game.engine = (function(){
 			height: 145,
 			qDur: 0,
 			qCool: 15,
+			qCost: function() { return 30 + this.level*15; },
 			qSnd: "arrow.mp3",
 			wDur: 0,
 			wCool: 300,
+			wCost: function() { return 20 + this.level*20; },
 			wSnd: "whoosh.mp3",
 			eDur: 0,
 			eCool: 420,
+			eCost: function() { return 50 + this.level*30; },
 			eSnd: "grenadeLob.mp3"
 		},
 		MAGI: {
@@ -136,12 +146,15 @@ game.engine = (function(){
 			height: 130,
 			qDur: 0,
 			qCool: 60,
+			qCost: function() { return 25 + this.level*25; },
 			qSnd: "fireball.mp3",
 			wDur: 20,
 			wCool: 800,
+			wCost: function() { return 50 + this.level*50; },
 			wSnd: "iceBridge.mp3",
 			eDur: 180,
 			eCool: 950,
+			eCost: function() { return 50 + this.level*35; },
 			eSnd: "stun.mp3"
 		}
 	};
@@ -357,37 +370,34 @@ game.engine = (function(){
 		//== BUILD UI ELEMENTS ==//{
 			//== Main Menu ==//{
 				windowManager.makeUI("titleScreen", 0, 0, canvas.width, canvas.height);
-				var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-				grad.addColorStop(0, "#ddce8f");
-				grad.addColorStop(1, "#6E643B");
-				windowManager.modifyUI("titleScreen", "fill", {color: grad});
+				windowManager.modifyUI("titleScreen", "image", {image: titleBg});
 				
 				// game title
-				windowManager.makeText("titleScreen", "title", 50, 50, canvas.width, "default", "Leap of Faith", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.makeText("titleScreen", "title", canvas.width/2 - 205, canvas.height/4.75, canvas.width, "default", "Leap of Faith", "40pt 'Uncial Antiqua'", "#666044");
 				windowManager.toggleUI("titleScreen");
 				
 				// start game button
-				windowManager.makeButton("titleScreen", "startButton", 60, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {game.engine.setupGame();});
-				windowManager.modifyButton("titleScreen", "startButton", "fill", {color: "#ddce8f"});
-				windowManager.modifyButton("titleScreen", "startButton", "border", {color: "#b7a86d", width: 4});
-				windowManager.modifyButton("titleScreen", "startButton", "text", {string: "Start", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				windowManager.makeButton("titleScreen", "startButton", canvas.width/16*7, 2.5*canvas.height/6, canvas.width/8, canvas.height/12, function() {game.engine.setupGame();});
+				windowManager.modifyButton("titleScreen", "startButton", "fill", {color: "#E4D8A5"});
+				windowManager.modifyButton("titleScreen", "startButton", "border", {color: "#666044", width: 4});
+				windowManager.modifyButton("titleScreen", "startButton", "text", {string: "Start", css: "24pt 'Uncial Antiqua'", color: "#666044"});
 				
 				// instructions button
-				windowManager.makeButton("titleScreen", "instructionButton", 250, 5*canvas.height/6, canvas.width/5, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("instructionScreen");});
-				windowManager.modifyButton("titleScreen", "instructionButton", "fill", {color: "#ddce8f"});
-				windowManager.modifyButton("titleScreen", "instructionButton", "border", {color: "#b7a86d", width: 4});
-				windowManager.modifyButton("titleScreen", "instructionButton", "text", {string: "Instructions", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				windowManager.makeButton("titleScreen", "instructionButton", canvas.width/10*4, 3.25*canvas.height/6, canvas.width/5, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("instructionScreen");});
+				windowManager.modifyButton("titleScreen", "instructionButton", "fill", {color: "#E4D8A5"});
+				windowManager.modifyButton("titleScreen", "instructionButton", "border", {color: "#666044", width: 4});
+				windowManager.modifyButton("titleScreen", "instructionButton", "text", {string: "Instructions", css: "24pt 'Uncial Antiqua'", color: "#666044"});
 				
 				// credits button
-				windowManager.makeButton("titleScreen", "creditButton", 540, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("creditScreen");});
-				windowManager.modifyButton("titleScreen", "creditButton", "fill", {color: "#ddce8f"});
-				windowManager.modifyButton("titleScreen", "creditButton", "border", {color: "#b7a86d", width: 4});
-				windowManager.modifyButton("titleScreen", "creditButton", "text", {string: "Credits", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				windowManager.makeButton("titleScreen", "creditButton", canvas.width/16*7, 4*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("creditScreen");});
+				windowManager.modifyButton("titleScreen", "creditButton", "fill", {color: "#E4D8A5"});
+				windowManager.modifyButton("titleScreen", "creditButton", "border", {color: "#666044", width: 4});
+				windowManager.modifyButton("titleScreen", "creditButton", "text", {string: "Credits", css: "24pt 'Uncial Antiqua'", color: "#666044"});
 			//== End Menu ==//}
 			
 			//== Instruction Screen ==//{
 				windowManager.makeUI("instructionScreen", 0, 0, canvas.width, canvas.height);
-				windowManager.modifyUI("instructionScreen", "fill", {color: grad});
+				windowManager.modifyUI("instructionScreen", "image", {image: titleBg});
 				windowManager.activateUIPausing("instructionScreen");
 				
 				// instruction text
@@ -406,14 +416,14 @@ game.engine = (function(){
 				
 				// back button
 				windowManager.makeButton("instructionScreen", "backButton", canvas.width * 7/8 - 50, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("instructionScreen"); windowManager.toggleUI("titleScreen");});
-				windowManager.modifyButton("instructionScreen", "backButton", "fill", {color: "#ddce8f"});
-				windowManager.modifyButton("instructionScreen", "backButton", "border", {color: "#b7a86d", width: 4});
-				windowManager.modifyButton("instructionScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				windowManager.modifyButton("instructionScreen", "backButton", "fill", {color: "#E4D8A5"});
+				windowManager.modifyButton("instructionScreen", "backButton", "border", {color: "#666044", width: 4});
+				windowManager.modifyButton("instructionScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#666044"});
 			//== End Instructions ==//}
 				
 			//== Credit Screen ==//{
 				windowManager.makeUI("creditScreen", 0, 0, canvas.width, canvas.height);
-				windowManager.modifyUI("creditScreen", "fill", {color: grad});
+				windowManager.modifyUI("creditScreen", "image", {image: titleBg});
 				windowManager.activateUIPausing("creditScreen");
 				
 				// instruction text
@@ -429,9 +439,9 @@ game.engine = (function(){
 				
 				// back button
 				windowManager.makeButton("creditScreen", "backButton", canvas.width * 7/8 - 50, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("creditScreen"); windowManager.toggleUI("titleScreen");});
-				windowManager.modifyButton("creditScreen", "backButton", "fill", {color: "#ddce8f"});
-				windowManager.modifyButton("creditScreen", "backButton", "border", {color: "#b7a86d", width: 4});
-				windowManager.modifyButton("creditScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				windowManager.modifyButton("creditScreen", "backButton", "fill", {color: "#E4D8A5"});
+				windowManager.modifyButton("creditScreen", "backButton", "border", {color: "#666044", width: 4});
+				windowManager.modifyButton("creditScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#666044"});
 			//== End Credits ==//}
 			
 			//== Pause Screen ==//{
@@ -594,19 +604,19 @@ game.engine = (function(){
 				//== Player Ability Upgrades ==//{
 					//== Paladin ==//{
 						// Q
-						windowManager.makeButton("shopScreen", "paladinQ", 20, 80, 160, 50, function() {game.engine.paladin.abilities.Q.levelUp();});
+						windowManager.makeButton("shopScreen", "paladinQ", 20, 80, 160, 50, function() { paladin.abilities.Q.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "paladinQ", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "paladinQ", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "paladinQ", "text", {string: "Shield", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 						
 						// W
-						windowManager.makeButton("shopScreen", "paladinW", 20, 150, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
+						windowManager.makeButton("shopScreen", "paladinW", 20, 150, 160, 50, function() { paladin.abilities.W.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "paladinW", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "paladinW", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "paladinW", "text", {string: "Dash", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 						
 						// E
-						windowManager.makeButton("shopScreen", "paladinE", 20, 220, 160, 50, function() {game.engine.paladin.abilities.E.levelUp();});
+						windowManager.makeButton("shopScreen", "paladinE", 20, 220, 160, 50, function() { paladin.abilities.E.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "paladinE", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "paladinE", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "paladinE", "text", {string: "Heal", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -614,19 +624,19 @@ game.engine = (function(){
 					
 					//== Ranger ==//{
 						// Q
-						windowManager.makeButton("shopScreen", "rangerQ", canvas.width*.3, 80, 160, 50, function() {game.engine.ranger.abilities.Q.levelUp();});
+						windowManager.makeButton("shopScreen", "rangerQ", canvas.width*.3, 80, 160, 50, function() { ranger.abilities.Q.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "rangerQ", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "rangerQ", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "rangerQ", "text", {string: "Arrow", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 						
 						// W
-						windowManager.makeButton("shopScreen", "rangerW", canvas.width*.3, 150, 160, 50, function() {game.engine.ranger.abilities.W.levelUp();});
+						windowManager.makeButton("shopScreen", "rangerW", canvas.width*.3, 150, 160, 50, function() { ranger.abilities.W.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "rangerW", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "rangerW", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "rangerW", "text", {string: "Jump", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 						
 						// E
-						windowManager.makeButton("shopScreen", "rangerE", canvas.width*.3, 220, 160, 50, function() {game.engine.ranger.abilities.E.levelUp();});
+						windowManager.makeButton("shopScreen", "rangerE", canvas.width*.3, 220, 160, 50, function() { ranger.abilities.E.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "rangerE", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "rangerE", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "rangerE", "text", {string: "Grenade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -634,19 +644,19 @@ game.engine = (function(){
 					
 					//== Magi ==//{
 						// Q
-						windowManager.makeButton("shopScreen", "magiQ", canvas.width*.6, 80, 160, 50, function() {game.engine.magi.abilities.Q.levelUp();});
+						windowManager.makeButton("shopScreen", "magiQ", canvas.width*.6, 80, 160, 50, function() { magi.abilities.Q.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "magiQ", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "magiQ", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "magiQ", "text", {string: "Fireball", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 						
 						// W
-						windowManager.makeButton("shopScreen", "magiW", canvas.width*.6, 150, 160, 50, function() {game.engine.magi.abilities.W.levelUp();});
+						windowManager.makeButton("shopScreen", "magiW", canvas.width*.6, 150, 160, 50, function() { magi.abilities.W.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "magiW", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "magiW", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "magiW", "text", {string: "Ice Bridge", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 						
 						// E
-						windowManager.makeButton("shopScreen", "magiE", canvas.width*.6, 220, 160, 50, function() {game.engine.magi.abilities.E.levelUp();});
+						windowManager.makeButton("shopScreen", "magiE", canvas.width*.6, 220, 160, 50, function() { magi.abilities.E.levelUp(); }.bind(game.engine));
 						windowManager.modifyButton("shopScreen", "magiE", "fill", {color: "#30d0ff"});
 						windowManager.modifyButton("shopScreen", "magiE", "border", {color: "#0b85a8", width: 2});
 						windowManager.modifyButton("shopScreen", "magiE", "text", {string: "Stun", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
@@ -663,7 +673,7 @@ game.engine = (function(){
 	function setupGame() {
 		// reset variables
 		score = 0;
-		experience = 10000;
+		experience = 0;
 		currentLevel = 0;
 		currentGameState = GAME_STATE.RUNNING;
 		
@@ -731,12 +741,17 @@ game.engine = (function(){
 	
 	// Load game assets (images and sounds)
 	function loadAssets() {
-		// world
+		//== Interfaces ==//{
+		titleBg.src = "assets/titleBg.png";
+		//}
+		
+		//== World ==//{
 		background.src = "assets/Wall720.png";
 		TERRAIN_TYPES.BASE.img.src = "assets/TileSandstone100.png";
 		TERRAIN_TYPES.LAVA.img.src = "assets/lava.png";
+		//}
 		
-		// player
+		//== Players ==//{
 		paladinImg.src = "assets/paladinImg.png";
 		rangerImg.src = "assets/rangerImg.png";
 		magiImg.src = "assets/magiImg.png";
@@ -745,20 +760,27 @@ game.engine = (function(){
 		PLAYER_CLASSES.PALADIN.shield.src = "assets/shield.png";
 		PLAYER_CLASSES.RANGER.img.src = "assets/rangerRun.png";
 		PLAYER_CLASSES.MAGI.img.src = "assets/magiRun.png";
+		//}
 		
+		//== Enemies ==//{
 		ENEMY_TYPES.RAT.img.src = "assets/ratRun.png";
 		ENEMY_TYPES.BAT.img.src = "assets/batRun.png";
 		ENEMY_TYPES.GATOR.img.src = "assets/gatorRun.png";
+		//}
 		
+		//== Projectiles ==//{
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
 		PROJECTILE_TYPES.GRENADE.img.src = "assets/grenade.png";
 		PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
 		PROJECTILE_TYPES.POISONBOLT.img.src = "assets/poisonBolt.png";
+		//}
 		
+		//== Particles ==//{
 		PARTICLE_TYPES.FLAME.img.src = "assets/flameParticle.png";
 		PARTICLE_TYPES.ICE.img.src = PARTICLE_TYPES.FROST.img.src = "assets/iceParticle.png";
 		PARTICLE_TYPES.HEAL.img.src = "assets/healParticle.png";
 		PARTICLE_TYPES.STUN.img.src = "assets/stunParticle.png";
+		//}
 	};
 	
 	// play a sound effect
@@ -772,8 +794,10 @@ game.engine = (function(){
 	function loop() {
 		animationID = requestAnimationFrame(loop);
 		
-		if (currentGameState === GAME_STATE.RUNNING || currentGameState === GAME_STATE.BETWEEN)
+		// Call update if the actual game is running
+		if (currentGameState === GAME_STATE.RUNNING || currentGameState === GAME_STATE.BETWEEN) {
 			update();
+		}
 		
 		// draw UI with all relevant data
 		// game HUD
@@ -789,7 +813,44 @@ game.engine = (function(){
 			]);
 		}
 		else {
+			// First, we're going to redraw the entire screen if it's the title screen
+			if (currentGameState === GAME_STATE.START) {
+				// Clear both canvases
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				offCtx.clearRect(0, 0, offCanvas.width, offCanvas.height);
+			}
+				
+			// Then, actually update/draw all the UIs (regardless of if we're on the title)
 			windowManager.updateAndDraw([]);
+				
+			// Then (again, only on title), draw lighting
+			if (currentGameState === GAME_STATE.START) {
+				//== TITLE SCREEN LIGHTING //{
+				// Overlay all in black
+				offCtx.globalCompositeOperation = "source-over";
+				offCtx.fillStyle = "rgba(0, 0, 0, 0.75)";
+				offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+				offCtx.globalCompositeOperation = "destination-out";
+				
+				// Simulate torches in background
+				for (var i = 390; i < canvas.width; i += 500) {			
+					// create a radial gradient
+					var radial = offCtx.createRadialGradient(i, 155, 550, i, 155, 0);
+					radial.addColorStop(0, "rgba(255, 255, 255, 0)");
+					radial.addColorStop(0.2, "rgba(255, 255, 255, 0.075)");
+					radial.addColorStop(1, "rgb(255, 255, 255)");
+					offCtx.fillStyle = radial;
+				
+					// subtract the light from the main canvas
+					offCtx.beginPath();
+					offCtx.arc(i, 155, 550, 0, Math.PI*2, false);
+					offCtx.fill();
+				}
+				
+				// Put offscreen canvas onto main
+				ctx.drawImage(offCanvas, 0, 0);
+				//}
+			}
 		}
 	}
 	
@@ -1365,6 +1426,7 @@ game.engine = (function(){
 		this.abilities = {				// stores info about each skill
 			Q: {
 				strength: function() {},
+				upgradeCost: this.classType.qCost,
 				duration: 0,
 				cooldown: 0,
 				level: 0,
@@ -1374,6 +1436,7 @@ game.engine = (function(){
 			},
 			W: {
 				strength: function() {},
+				upgradeCost: this.classType.wCost,
 				duration: 0,
 				cooldown: 0,
 				level: 0,
@@ -1383,6 +1446,7 @@ game.engine = (function(){
 			},
 			E: {
 				strength: function() {},
+				upgradeCost: this.classType.eCost,
 				duration: 0,
 				cooldown: 0,
 				level: 0,
@@ -1402,7 +1466,7 @@ game.engine = (function(){
 				this.Q.duration = this.W.duration = this.E.duration =
 				this.Q.cooldown = this.W.cooldown = this.E.cooldown = 0;
 			}
-		};
+		}
 		
 		this.time = this.order*20;		// used to control animation timing
 		this.frameWidth = this.classType.img.width/28; // width of 1 frame from the spritesheet
@@ -1415,22 +1479,25 @@ game.engine = (function(){
 			case PLAYER_CLASSES.PALADIN:
 				// Paladin-specific level up functions
 				this.abilities.Q.levelUp = function() {
-					if (experience >= 30 + this.level*20 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxDur += 45;
 						this.maxCool -= 20;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
 				this.abilities.W.levelUp = function() {
-					if (experience >= 30 + this.level*15 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxDur += 3;
 						this.maxCool -= 20;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
 				this.abilities.E.levelUp = function() {
-					if (experience >= 50 + this.level*75 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxCool -= 60;
+						experience -= this.upgradeCost();;
 						++this.level;
 					}
 				}
@@ -1438,20 +1505,23 @@ game.engine = (function(){
 			case PLAYER_CLASSES.RANGER:
 				// Ranger-specific level up functions
 				this.abilities.Q.levelUp = function() {
-					if (experience >= 30 + this.level*15 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxCool -= 1.4;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
 				this.abilities.W.levelUp = function() {
-					if (experience >= 20 + this.level*20 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxCool -= 24;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
 				this.abilities.E.levelUp = function() {
-					if (experience >= 50 + this.level*30 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxCool -= 30;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
@@ -1462,22 +1532,25 @@ game.engine = (function(){
 			case PLAYER_CLASSES.MAGI:
 				// Magi-specific level up functions
 				this.abilities.Q.levelUp = function() {
-					if (experience >= 25 + this.level*25 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxCool -= 4;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
 				this.abilities.W.levelUp = function() {
-					if (experience >= 50 + this.level*50 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxDur += 15;
 						this.maxCool -= 30;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
 				this.abilities.E.levelUp = function() {
-					if (experience >= 50 + this.level*35 && this.level < 10) {
+					if (experience >= this.upgradeCost() && this.level < 10) {
 						this.maxDur += 15;
 						this.maxCool -= 30;
+						experience -= this.upgradeCost();
 						++this.level;
 					}
 				}
