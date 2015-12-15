@@ -534,7 +534,7 @@ game.engine = (function(){
 				windowManager.modifyUI("expHUD", "border", {color: "#b7a86d", width: 3});
 				
 				// experience text
-				windowManager.makeText("expHUD", "experience", 10, 10, canvas.width/4, 30, "Experience: %v", "20pt 'Uncial Antiqua'", "#b7a86d");
+				windowManager.makeText("expHUD", "experience", 10, 10, canvas.width/4, 30, "Experience: %v", "20pt 'Uncial Antiqua'", "#666044");
 			//== End Experience ==//}
 			
 			//== Player UI ==//{
@@ -578,35 +578,80 @@ game.engine = (function(){
 			//== End Player ==//}
 			
 			//== Upgrade Shop UI ==//{
-				// black background for shop window
-				windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
-				windowManager.modifyUI("shopHUD", "fill", {color: "rgba(0, 0, 0, 0.65)"});
+				windowManager.makeUI("shopScreen", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75);
+				windowManager.modifyUI("shopScreen", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("shopScreen", "border", {color: "#b7a86d", width: 4});
 				
-				// main box that makes up shop window
-				windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
-				windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
-				windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
+				// level complete text
+				windowManager.makeText("shopScreen", "levelComplete", 20, 20, canvas.width*.7, "default", "Level %v complete!", "30pt 'Uncial Antiqua'", "#666044");
 				
-				// 'next level' button
-				windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
-				windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
-				windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
-				windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				// next level button
+				windowManager.makeButton("shopScreen", "nextLevel", canvas.width*.75 - 130, 20, 110, 50, game.engine.setupLevel);
+				windowManager.modifyButton("shopScreen", "nextLevel", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("shopScreen", "nextLevel", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("shopScreen", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 				
-				//== Player ability upgrades ==//
-				// Paladin Q
-				//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
-				//windowManager.modifyButton("shopHUD", "paladinQ", "fill", {color: "#30d0ff"});
-				//windowManager.modifyButton("shopHUD", "paladinQ", "border", {color: "#0b85a8", width: 2});
-				//windowManager.modifyButton("shopHUD", "paladinQ", "text", {string: "+Shield Duration", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-				//windowManager.toggleButton("shopHUD", "paladinQ");	
-				
-				// Paladin W
-				//windowManager.makeButton("shopHUD", "paladinW", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
-				//windowManager.modifyButton("shopHUD", "paladinW", "fill", {color: "#30d0ff"});
-				//windowManager.modifyButton("shopHUD", "paladinW", "border", {color: "#0b85a8", width: 2});
-				//windowManager.modifyButton("shopHUD", "paladinW", "text", {string: "+Dash Speed", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-				//windowManager.toggleButton("shopHUD", "paladinW");
+				//== Player Ability Upgrades ==//{
+					//== Paladin ==//{
+						// Q
+						windowManager.makeButton("shopScreen", "paladinQ", 20, 80, 160, 50, function() {game.engine.paladin.abilities.Q.levelUp();});
+						windowManager.modifyButton("shopScreen", "paladinQ", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "paladinQ", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "paladinQ", "text", {string: "Shield", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+						
+						// W
+						windowManager.makeButton("shopScreen", "paladinW", 20, 150, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
+						windowManager.modifyButton("shopScreen", "paladinW", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "paladinW", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "paladinW", "text", {string: "Dash", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+						
+						// E
+						windowManager.makeButton("shopScreen", "paladinE", 20, 220, 160, 50, function() {game.engine.paladin.abilities.E.levelUp();});
+						windowManager.modifyButton("shopScreen", "paladinE", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "paladinE", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "paladinE", "text", {string: "Heal", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+					//== End Paladin ==//}
+					
+					//== Ranger ==//{
+						// Q
+						windowManager.makeButton("shopScreen", "rangerQ", canvas.width*.3, 80, 160, 50, function() {game.engine.ranger.abilities.Q.levelUp();});
+						windowManager.modifyButton("shopScreen", "rangerQ", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "rangerQ", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "rangerQ", "text", {string: "Arrow", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+						
+						// W
+						windowManager.makeButton("shopScreen", "rangerW", canvas.width*.3, 150, 160, 50, function() {game.engine.ranger.abilities.W.levelUp();});
+						windowManager.modifyButton("shopScreen", "rangerW", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "rangerW", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "rangerW", "text", {string: "Jump", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+						
+						// E
+						windowManager.makeButton("shopScreen", "rangerE", canvas.width*.3, 220, 160, 50, function() {game.engine.ranger.abilities.E.levelUp();});
+						windowManager.modifyButton("shopScreen", "rangerE", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "rangerE", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "rangerE", "text", {string: "Grenade", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+					//== End Ranger ==//}
+					
+					//== Magi ==//{
+						// Q
+						windowManager.makeButton("shopScreen", "magiQ", canvas.width*.6, 80, 160, 50, function() {game.engine.magi.abilities.Q.levelUp();});
+						windowManager.modifyButton("shopScreen", "magiQ", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "magiQ", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "magiQ", "text", {string: "Fireball", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+						
+						// W
+						windowManager.makeButton("shopScreen", "magiW", canvas.width*.6, 150, 160, 50, function() {game.engine.magi.abilities.W.levelUp();});
+						windowManager.modifyButton("shopScreen", "magiW", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "magiW", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "magiW", "text", {string: "Ice Bridge", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+						
+						// E
+						windowManager.makeButton("shopScreen", "magiE", canvas.width*.6, 220, 160, 50, function() {game.engine.magi.abilities.E.levelUp();});
+						windowManager.modifyButton("shopScreen", "magiE", "fill", {color: "#30d0ff"});
+						windowManager.modifyButton("shopScreen", "magiE", "border", {color: "#0b85a8", width: 2});
+						windowManager.modifyButton("shopScreen", "magiE", "text", {string: "Stun", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+					//== End Magi ==//}
+				//== End Abilities ==//}
 			//== End Shop ==//}
 		//== END UI ==//}
 		
@@ -680,7 +725,7 @@ game.engine = (function(){
 			enemies.push(new Enemy(ENEMY_TYPES.GATOR));
 		
 		// Disable HUD and begin running!
-		windowManager.deactivateUI("shopHUD");
+		windowManager.deactivateUI("shopScreen");
 		currentGameState = GAME_STATE.RUNNING;
 	};
 	
@@ -796,7 +841,7 @@ game.engine = (function(){
 				currentGameState = GAME_STATE.BETWEEN;
 				
 				// enable upgrade screen UI
-				windowManager.toggleUI("shopHUD");
+				upgrade();
 				
 				// reset player abilities
 				for (var i = 0; i < players.length; ++i)
@@ -2147,6 +2192,15 @@ game.engine = (function(){
 		windowManager.activateUI("playerHUD");
 	}
 	
+	// FUNCTION: set up upgrade screen
+	function upgrade() {
+		// update level complete text
+		windowManager.modifyText("shopScreen", "levelComplete", "text", {string: "Level " + currentLevel + " complete!", css: "30pt 'Uncial Antiqua'", color: "#666044"});
+		
+		// activate upgrade screen
+		windowManager.activateUI("shopScreen");
+	}
+	
 	// FUNCTION: deactivate all HUD UI
 	function deactivateHUD() {
 		windowManager.deactivateUI("expHUD");
@@ -2180,7 +2234,7 @@ game.engine = (function(){
 			// if we're in between levels, move on to the next one
 			if (currentGameState === GAME_STATE.BETWEEN) {
 				// disable upgrade shop UI
-				windowManager.toggleUI("shopHUD");
+				windowManager.toggleUI("shopScreen");
 				setupLevel();
 			};
 			
