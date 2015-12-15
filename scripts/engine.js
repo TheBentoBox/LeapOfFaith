@@ -22,10 +22,23 @@ game.engine = (function(){
 	var dt = 0;					// delta time
 	var time = 0;
 	
-	// ASSETS
-	var background = new Image();
-	var baseImg = new Image();
-	var lavaImg = new Image();
+	//== ASSETS ==//{
+		//== World ==//{
+			var background = new Image();
+			var baseImg = new Image();
+			var lavaImg = new Image();
+		//== End World ==//}
+		
+		//== Player ==//{
+			var paladinImg = new Image();
+			var rangerImg = new Image();
+			var magiImg = new Image();
+		//== End Player ==//}
+		
+		//== Skills ==//{
+			
+		//== End Skills ==//}
+	//== END UI ==//}
 	
 	// GAME VARIABLES
 	// General
@@ -75,6 +88,7 @@ game.engine = (function(){
 	var paladin = {};			// direct reference to the paladin
 	var ranger = {};			// direct reference to the ranger
 	var magi = {};				// direct reference to the magi
+	var leader = {};			// reference to the current party leader
 	// Player classes
 	var PLAYER_CLASSES = {		// enum storing class info
 		PALADIN: {
@@ -232,17 +246,10 @@ game.engine = (function(){
 				// Switch party order on clicks
 				// loop and cycle if they aren't running already
 				if (currentGameState === GAME_STATE.RUNNING) {
-					for (var i = 0; i < players.length; ++i) {
-						// only cycle living players
-						if (players[i].deathTime == 0) {
-							// left click - cycle left
-							if (e.which == 1)
-								players[i].cycleOrder(1);
-							// right click - cycle right
-							if (e.which == 3)
-								players[i].cycleOrder(-1);
-						}
-					};
+					if (e.which == 1)
+						cycleParty(1);
+					else if (e.which == 3)
+						cycleParty(-1);
 				};
 				
 				// if the player has died
@@ -292,7 +299,7 @@ game.engine = (function(){
 				windowManager.makeUI("titleScreen", 0, 0, canvas.width, canvas.height);
 				var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
 				grad.addColorStop(0, "#ddce8f");
-				grad.addColorStop(1, "#B5A76B");
+				grad.addColorStop(1, "#6E643B");
 				windowManager.modifyUI("titleScreen", "fill", {color: grad});
 				
 				// game title
@@ -417,7 +424,7 @@ game.engine = (function(){
 			
 			//== Ability UI ==//{
 				// HUD box for current abilities
-				windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
+				windowManager.makeUI("abilityHUD", 0, canvas.height*6/7, canvas.width*0.19, canvas.height/7);
 				
 				// set ability box to sandstone colors
 				windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
@@ -425,22 +432,38 @@ game.engine = (function(){
 				
 				//== Ability Buttons ==//
 				//ability 1
-				windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q});});
-				windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
-				windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
-				windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				windowManager.makeButton("abilityHUD", "qButton", 10, 10, 64, 64, function(){game.engine.keyPress({keyCode: KEY.Q});});
+				windowManager.modifyButton("abilityHUD", "qButton", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "qButton", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "qButton", "text", {string: "Q", css: "20pt 'Uncial Antiqua'", color: "#0b85a8"});
 				
 				// ability 2
-				windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
-				windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
-				windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
-				windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				windowManager.makeButton("abilityHUD", "wButton", 84, 10, 64, 64, function() {game.engine.keyPress({keyCode: KEY.W});});
+				windowManager.modifyButton("abilityHUD", "wButton", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "wButton", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "wButton", "text", {string: "W", css: "20pt 'Uncial Antiqua'", color: "#0b85a8"});
 				
 				// ability 3
-				windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
-				windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
-				windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
-				windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				windowManager.makeButton("abilityHUD", "eButton", 158, 10, 64, 64, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
+				windowManager.modifyButton("abilityHUD", "eButton", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "eButton", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "eButton", "text", {string: "E", css: "20pt 'Uncial Antiqua'", color: "#0b85a8"});
+			
+				//== Cooldown Bars ==//
+				// ability 1
+				windowManager.makeBar("abilityHUD", "qBar", 10, 80, 64, 10, 1, 1, 0);
+				windowManager.modifyBar("abilityHUD", "qBar", "fill", {foreColor: "#376573", backColor: "#30d0ff"});
+				windowManager.modifyBar("abilityHUD", "qBar", "border", {color: "#0b85a8", width: "1"});
+				
+				// ability 2
+				windowManager.makeBar("abilityHUD", "wBar", 84, 80, 64, 10, 1, 1, 0);
+				windowManager.modifyBar("abilityHUD", "wBar", "fill", {foreColor: "#376573", backColor: "#30d0ff"});
+				windowManager.modifyBar("abilityHUD", "wBar", "border", {color: "#0b85a8", width: "1"});
+				
+				// ability 3
+				windowManager.makeBar("abilityHUD", "eBar", 158, 80, 64, 10, 1, 1, 0);
+				windowManager.modifyBar("abilityHUD", "eBar", "fill", {foreColor: "#376573", backColor: "#30d0ff"});
+				windowManager.modifyBar("abilityHUD", "eBar", "border", {color: "#0b85a8", width: "1"});
 			//== End Abilities ==//}
 			
 			//== Experience UI ==//{
@@ -453,6 +476,46 @@ game.engine = (function(){
 				// experience text
 				windowManager.makeText("expHUD", "experience", 10, 10, canvas.width/4, 30, "Experience: %v", "20pt 'Uncial Antiqua'", "#b7a86d");
 			//== End Experience ==//}
+			
+			//== Player UI ==//{
+				windowManager.makeUI("playerHUD", 0, 0, canvas.width*0.21, canvas.height*0.24);
+				
+				// set colors
+				windowManager.modifyUI("playerHUD", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("playerHUD", "border", {color: "#b7a86d", width: 3});
+				
+				//== Player Images ==//
+				// paladin
+				windowManager.makeImage("playerHUD", "paladinImg", 5, 5, 50, 50, paladinImg);
+				windowManager.modifyImage("playerHUD", "paladinImg", "fill", {color: "#666044"});
+				windowManager.modifyImage("playerHUD", "paladinImg", "border", {color: "#b7a86d", width: 2});
+				
+				// ranger
+				windowManager.makeImage("playerHUD", "rangerImg", 5, 60, 50, 50, rangerImg);
+				windowManager.modifyImage("playerHUD", "rangerImg", "fill", {color: "#666044"});
+				windowManager.modifyImage("playerHUD", "rangerImg", "border", {color: "#b7a86d", width: 2});
+				
+				// magi
+				windowManager.makeImage("playerHUD", "magiImg", 5, 115, 50, 50, magiImg);
+				windowManager.modifyImage("playerHUD", "magiImg", "fill", {color: "#666044"});
+				windowManager.modifyImage("playerHUD", "magiImg", "border", {color: "#b7a86d", width: 2});
+				
+				//== Health Bars ==//
+				// paladin
+				windowManager.makeBar("playerHUD", "paladinHealth", 60, 23, 200, 20, PLAYER_CLASSES.PALADIN.health, PLAYER_CLASSES.PALADIN.health, 0);
+				windowManager.modifyBar("playerHUD", "paladinHealth", "fill", {foreColor: "#080", backColor: "#800"});
+				windowManager.modifyBar("playerHUD", "paladinHealth", "border", {color: "#b7a86d", width: 2});
+				
+				// ranger
+				windowManager.makeBar("playerHUD", "rangerHealth", 60, 78, 200, 20, PLAYER_CLASSES.RANGER.health, PLAYER_CLASSES.RANGER.health, 0);
+				windowManager.modifyBar("playerHUD", "rangerHealth", "fill", {foreColor: "#080", backColor: "#800"});
+				windowManager.modifyBar("playerHUD", "rangerHealth", "border", {color: "#b7a86d", width: 2});
+				
+				// magi
+				windowManager.makeBar("playerHUD", "magiHealth", 60, 133, 200, 20, PLAYER_CLASSES.MAGI.health, PLAYER_CLASSES.MAGI.health, 0);
+				windowManager.modifyBar("playerHUD", "magiHealth", "fill", {foreColor: "#080", backColor: "#800"});
+				windowManager.modifyBar("playerHUD", "magiHealth", "border", {color: "#b7a86d", width: 2});
+			//== End Player ==//}
 			
 			//== Upgrade Shop UI ==//{
 				// black background for shop window
@@ -503,9 +566,14 @@ game.engine = (function(){
 		
 		// SETUP: game
 		// create the players
-		players[0] = paladin = new Player(PLAYER_CLASSES.PALADIN);
+		players[0] = paladin = leader = new Player(PLAYER_CLASSES.PALADIN);
 		players[1] = ranger = new Player(PLAYER_CLASSES.RANGER);
 		players[2] = magi = new Player(PLAYER_CLASSES.MAGI);
+		
+		// update ability HUD
+		windowManager.modifyBar("abilityHUD", "qBar", "target", {tgtVar: leader.abilities.Q.cooldown, tgtMax: leader.abilities.Q.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "wBar", "target", {tgtVar: leader.abilities.W.cooldown, tgtMax: leader.abilities.W.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "eBar", "target", {tgtVar: leader.abilities.E.cooldown, tgtMax: leader.abilities.E.maxCool, tgtMin: 0});
 		
 		// prepare the level
 		setupLevel();
@@ -554,9 +622,15 @@ game.engine = (function(){
 	
 	// Load game assets (images and sounds)
 	function loadAssets() {
+		// world
 		background.src = "assets/Wall720.png";
 		TERRAIN_TYPES.BASE.img.src = "assets/TileSandstone100.png";
 		TERRAIN_TYPES.LAVA.img.src = "assets/lava.png";
+		
+		// player
+		paladinImg.src = "assets/paladinImg.png";
+		rangerImg.src = "assets/rangerImg.png";
+		magiImg.src = "assets/magiImg.png";
 		
 		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
 		PLAYER_CLASSES.RANGER.img.src = "assets/rangerRun.png";
@@ -587,7 +661,21 @@ game.engine = (function(){
 		if (currentGameState != GAME_STATE.PAUSED)
 			update();
 		
-		windowManager.updateAndDraw([{name:"experience", value:[experience]}]);
+		// draw UI with all relevant data
+		// game HUD
+		if (currentGameState === GAME_STATE.RUNNING) {
+			windowManager.updateAndDraw([
+				{name:"experience", value:[experience]},
+				{name:"paladinHealth", value: [paladin.health]},
+				{name:"rangerHealth", value: [ranger.health]},
+				{name:"magiHealth", value: [magi.health]},
+				{name:"qBar", value: [leader.abilities.Q.cooldown]},
+				{name:"wBar", value: [leader.abilities.W.cooldown]},
+				{name:"eBar", value: [leader.abilities.E.cooldown]}
+			]);
+		}
+		else
+			windowManager.updateAndDraw([]);
 	}
 	
 	// main game tick
@@ -661,20 +749,10 @@ game.engine = (function(){
 		// Switch party order with left or right arrow keys
 		// loop and cycle if they aren't switching already
 		if (currentGameState === GAME_STATE.RUNNING) {
-			for (var i = 0; i < players.length; ++i) {
-				// only cycle living players
-				if (players[i].deathTime == 0) {
-					// left click - cycle left
-					if (keys[KEY.LEFT]) {
-						players[i].cycleOrder(1);
-					}
-					// right click - cycle right
-					else
-					if (keys[KEY.RIGHT]) {
-						players[i].cycleOrder(-1);
-					}
-				}
-			};
+			if (keys[KEY.LEFT])
+				cycleParty(1);
+			else if (keys[KEY.RIGHT])
+				cycleParty(-1);
 		};
 		
 		// clear the screen
@@ -1213,18 +1291,6 @@ game.engine = (function(){
 				}
 				ctx.fill();
 			}
-			
-			// draw health above head
-			ctx.fillStyle = "red";
-			ctx.fillRect(this.position.x+10, this.position.y - 14, this.bounds.x-20, 5);
-			ctx.fillStyle = "green";
-			ctx.fillRect(this.position.x+10, this.position.y - 14, (this.bounds.x-20) * (this.health/this.maxHealth), 5);
-			
-			// draw cooldown bars
-			ctx.fillStyle = "rgb(0, 255, 255)";
-			ctx.fillRect(this.position.x+10, this.position.y - 9, (this.bounds.x-20) * (this.abilities.Q.cooldown/this.abilities.Q.maxCool), 3);
-			ctx.fillStyle = "rgb(0, 205, 205)";
-			ctx.fillRect(this.position.x+10, this.position.y - 6, (this.bounds.x-20) * (this.abilities.W.cooldown/this.abilities.W.maxCool), 3);
 			
 			ctx.restore();
 		};
@@ -1826,16 +1892,41 @@ game.engine = (function(){
 		}
 	};
 	
+	// FUNCTION: returns reference to party leader
+	function firstPlayer() {
+		for (var i = 0; i < players.length; ++i)
+			if (players[i].order === 0)
+				return players[i];
+	}
+	
+	// FUNCTION: cycles party order
+	function cycleParty(direction) {
+		for (var i = 0; i < players.length; ++i) {
+			// only cycle living players
+			if (players[i].deathTime == 0)
+				players[i].cycleOrder(direction);
+		};
+		// update leader
+		leader = firstPlayer();
+		
+		// update ability HUD
+		windowManager.modifyBar("abilityHUD", "qBar", "target", {tgtVar: leader.abilities.Q.cooldown, tgtMax: leader.abilities.Q.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "wBar", "target", {tgtVar: leader.abilities.W.cooldown, tgtMax: leader.abilities.W.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "eBar", "target", {tgtVar: leader.abilities.E.cooldown, tgtMax: leader.abilities.E.maxCool, tgtMin: 0});
+	}
+	
 	// FUCNTION: activate all HUD UI
 	function activateHUD() {
 		windowManager.activateUI("expHUD");
 		windowManager.activateUI("abilityHUD");
+		windowManager.activateUI("playerHUD");
 	}
 	
 	// FUNCTION: deactivate all HUD UI
 	function deactivateHUD() {
 		windowManager.deactivateUI("expHUD");
 		windowManager.deactivateUI("abilityHUD");
+		windowManager.deactivateUI("playerHUD");
 	}
 	
 	// FUNCTION: do things based on key presses
