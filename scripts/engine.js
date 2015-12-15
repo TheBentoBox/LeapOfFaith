@@ -367,6 +367,54 @@ game.engine = (function(){
 				windowManager.modifyButton("creditScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
 			//== End Credits ==//}
 			
+			//== Pause Screen ==//{
+				windowManager.makeUI("pauseScreen", canvas.width/3, canvas.height/3, canvas.width/3, canvas.height/3);
+				windowManager.modifyUI("pauseScreen", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("pauseScreen", "border", {color: "#b7a86d", width: 6});
+				windowManager.activateUIPausing("pauseScreen");
+				windowManager.makeText("pauseScreen", "pause", 20, 20, "default", "default", "Paused", "30pt 'Uncial Antiqua'", "#b7a86d");
+				
+				// continue button
+				windowManager.makeButton("pauseScreen", "continueButton", 20, 80, canvas.width/3 - 40, canvas.height/12, function() {game.engine.resumeGame();});
+				windowManager.modifyButton("pauseScreen", "continueButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("pauseScreen", "continueButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("pauseScreen", "continueButton", "text", {string: "Continue", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// quit button
+				windowManager.makeButton("pauseScreen", "quitButton", 20, 160, canvas.width/3 - 40, canvas.height/12, function() {
+					windowManager.deactivateUI("all");
+					windowManager.activateUI("titleScreen");
+					currentGameState = GAME_STATE.START;
+				});
+				windowManager.modifyButton("pauseScreen", "quitButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("pauseScreen", "quitButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("pauseScreen", "quitButton", "text", {string: "Quit", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"}); 
+			//== End Pause ==//}
+			
+			//== Death Screen ==//{
+				windowManager.makeUI("deathScreen", canvas.width/3, canvas.height/3, canvas.width/3, canvas.height/3);
+				windowManager.modifyUI("deathScreen", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("deathScreen", "border", {color: "#b7a86d", width: 6});
+				windowManager.activateUIPausing("deathScreen");
+				windowManager.makeText("deathScreen", "dead", 20, 20, canvas.width / 3 - 40, "default", "You died...", "30pt 'Uncial Antiqua'", "#b7a86d");
+				
+				// new game button
+				windowManager.makeButton("deathScreen", "restartButton", 20, 80, canvas.width/3 - 40, canvas.height/12, function() {windowManager.deactivateUI("deathScreen"); game.engine.setupGame();});
+				windowManager.modifyButton("deathScreen", "restartButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("deathScreen", "restartButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("deathScreen", "restartButton", "text", {string: "New game", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// quit button
+				windowManager.makeButton("deathScreen", "quitButton", 20, 160, canvas.width/3 - 40, canvas.height/12, function() {
+					windowManager.deactivateUI("all");
+					windowManager.activateUI("titleScreen");
+					currentGameState = GAME_STATE.START;
+				});
+				windowManager.modifyButton("deathScreen", "quitButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("deathScreen", "quitButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("deathScreen", "quitButton", "text", {string: "Quit", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"}); 
+			//== End Death ==//}
+			
 			//== Ability UI ==//{
 				// HUD box for current abilities
 				windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/4, canvas.height/8);
@@ -395,18 +443,16 @@ game.engine = (function(){
 				windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
 			//== End Abilities ==//}
 			
-			//== Score UI ==//{
-				windowManager.makeUI("scoreHUD", canvas.width-150, 0, 150, 50);
+			//== Experience UI ==//{
+				windowManager.makeUI("expHUD", canvas.width*3/4, 0, canvas.width/4, 50);
 				
-				// set fill to gradient
-				var grad = ctx.createLinearGradient(0, 0, 150, 0);
-				grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-				grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-				windowManager.modifyUI("scoreHUD", "fill", {color: grad});
+				// set fill color
+				windowManager.modifyUI("expHUD", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("expHUD", "border", {color: "#b7a86d", width: 3});
 				
-				// score text
-				windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
-			//== End Score ==//}
+				// experience text
+				windowManager.makeText("expHUD", "experience", 10, 10, canvas.width/4, 30, "Experience: %v", "20pt 'Uncial Antiqua'", "#b7a86d");
+			//== End Experience ==//}
 			
 			//== Upgrade Shop UI ==//{
 				// black background for shop window
@@ -442,7 +488,7 @@ game.engine = (function(){
 		//== END UI ==//}
 		
 		// BEGIN main game tick
-		update();
+		loop();
 	};
 	
 	// Setup a new game
@@ -466,6 +512,9 @@ game.engine = (function(){
 		
 		// start music loop
 		bgAudio.play();
+		
+		// show HUD
+		activateHUD();
 	};
 	
 	// Setup the next level
@@ -531,10 +580,19 @@ game.engine = (function(){
 		player.play();
 	};
 	
+	// main loop - always runs
+	function loop() {
+		animationID = requestAnimationFrame(loop);
+		
+		if (currentGameState != GAME_STATE.PAUSED)
+			update();
+		
+		windowManager.updateAndDraw([{name:"experience", value:[experience]}]);
+	}
+	
 	// main game tick
 	function update() {
-		// scedule next draw frame
-		animationID = requestAnimationFrame(update);
+		// reset/calculate control variables
 		dt = calculateDeltaTime();
 		++time;
 		
@@ -571,11 +629,6 @@ game.engine = (function(){
 			}
 			return;
 		};
-	 	
-	 	// if paused, bail out of loop
-		if (currentGameState === GAME_STATE.PAUSED) {
-			return;
-		}
 		
 		// push to between screen if the level is finished
 		if (currentLevelLength <= 0 && currentGameState != GAME_STATE.BETWEEN) {
@@ -670,6 +723,8 @@ game.engine = (function(){
 		if (numDead === players.length && currentGameState != GAME_STATE.DEAD) {
 			players = [];
 			currentGameState = GAME_STATE.DEAD;
+			windowManager.activateUI("deathScreen");
+			deactivateHUD();
 			
 			// attempt to add the score to the high score list
 			if (typeof(window.localStore) != undefined) {
@@ -779,33 +834,6 @@ game.engine = (function(){
 		// update all particles
 		for (var i = 0; i < particles.length; ++i)
 			particles[i].update();
-		
-		// draw HUDs
-		if (currentGameState != GAME_STATE.DEAD) {
-			game.windowManager.updateAndDraw([{name:"score", value:[score]}]);
-			
-			// draw score in upper right
-			//var grad = ctx.createLinearGradient(0, 0, 150, 0);
-			//grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-			//grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-			//ctx.fillStyle = grad;
-			//ctx.fillRect(canvas.width-150, 0, 150, 50);
-			//fillText(ctx, "Score: " + score, canvas.width - 75, 25, "20pt Calibri", "white");
-			//ctx.fill();
-		}
-		// draw death screen if player has died
-		else {
-			ctx.save();
-			ctx.fillStyle = "black";
-			ctx.globalAlpha = 0.7;
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.fill();
-			fillText(ctx, "You died.", canvas.width/2, canvas.height/2 - 40, "30pt 'Uncial Antiqua'", "white");
-			fillText(ctx, "Score: " + score, canvas.width/2, canvas.height/2, "24pt Calibri", "white");
-			fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2 + 40, "24pt Calibri", "white");
-			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 80, "24pt Calibri", "white");
-			ctx.restore();
-		};
 	};
 	
 	// BASE CLASS: game object with physics and bounding box variables
@@ -1780,17 +1808,9 @@ game.engine = (function(){
 			currentGameState = GAME_STATE.PAUSED;
 			bgAudio.pause();
 			
-			// stop the animation loop if the player is alive
-			if (currentGameState === GAME_STATE.RUNNING)
-				cancelAnimationFrame(animationID);
-			
 			// draw the pause screen
-			ctx.save();
-			ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			fillText(ctx, "Paused", canvas.width/2, canvas.height/2, "30pt Calibri", "white");
-			fillText(ctx, "Press P to unpause", canvas.width/2, canvas.height/2+40, "24pt Calibri", "white");
-			ctx.restore();
+			windowManager.activateUI("pauseScreen");
+			deactivateHUD();
 		};
 	};
 	
@@ -1800,15 +1820,23 @@ game.engine = (function(){
 			currentGameState = GAME_STATE.RUNNING;
 			bgAudio.play();
 			
-			// forcibly end animation loop in case it's running
-			// only end the loop if the player is alive
-			if (currentGameState === GAME_STATE.RUNNING) {
-				cancelAnimationFrame(animationID);
-				// resume ticking
-				update();
-			}
+			// deactivate pause screen
+			windowManager.deactivateUI("pauseScreen");
+			activateHUD();
 		}
 	};
+	
+	// FUCNTION: activate all HUD UI
+	function activateHUD() {
+		windowManager.activateUI("expHUD");
+		windowManager.activateUI("abilityHUD");
+	}
+	
+	// FUNCTION: deactivate all HUD UI
+	function deactivateHUD() {
+		windowManager.deactivateUI("expHUD");
+		windowManager.deactivateUI("abilityHUD");
+	}
 	
 	// FUNCTION: do things based on key presses
 	function keyPress(e) {
