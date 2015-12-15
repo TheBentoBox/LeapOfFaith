@@ -22,9 +22,6 @@ game.windowManager = (function(){
 		canvas = document.querySelector("canvas");	
 		ctx = canvas.getContext("2d");				
 		
-		canvas.addEventListener("mousedown", checkMouse);	// click event to check mouse on UI
-		canvas.addEventListener("touchstart", checkMouse);	// tap event to check touch on UI
-		
 		updateAndDraw();
 	}
 	
