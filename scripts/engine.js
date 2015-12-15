@@ -125,7 +125,7 @@ game.engine = (function(){
 			wCool: 300,
 			wSnd: "whoosh.mp3",
 			eDur: 0,
-			eCool: 120,
+			eCool: 420,
 			eSnd: "grenadeLob.mp3"
 		},
 		MAGI: {
@@ -185,6 +185,14 @@ game.engine = (function(){
 			height: 13,
 			gravity: true,
 			velocity: 33
+		},
+		GRENADE: {
+			strength: function() { return 30 + ranger.abilities.E.level*5; },
+			img: new Image(),
+			width: 40,
+			height: 40,
+			gravity: true,
+			velocity: 15
 		},
 		MAGIFIREBALL: {
 			strength: function() { return 5 + magi.abilities.Q.level*1.5;},
@@ -698,6 +706,7 @@ game.engine = (function(){
 		ENEMY_TYPES.GATOR.img.src = "assets/gatorRun.png";
 		
 		PROJECTILE_TYPES.ARROW.img.src = "assets/arrow.png";
+		PROJECTILE_TYPES.GRENADE.img.src = "assets/grenade.png";
 		PROJECTILE_TYPES.MAGIFIREBALL.img.src = "assets/fireball.png";
 		PROJECTILE_TYPES.POISONBOLT.img.src = "assets/poisonBolt.png";
 		
@@ -837,7 +846,7 @@ game.engine = (function(){
 				++numDead;
 				++players[i].deathTime;
 				// respawn
-				if (players[i].deathTime >= 200) {
+				if (players[i].deathTime >= 1200) {
 					// get number of living players
 					var numAlive = 0;
 					for (var ii = 0; ii < players.length; ++ii) {
@@ -862,7 +871,7 @@ game.engine = (function(){
 					playStream("respawn.mp3", 0.25);
 				}
 			}
-		};
+		}
 		
 		// if everyone is dead, send game to death screen
 		if (numDead === players.length && currentGameState != GAME_STATE.DEAD) {
@@ -1562,7 +1571,8 @@ game.engine = (function(){
 				
 				switch(this.classType) {
 					case PLAYER_CLASSES.PALADIN:
-						// dash forward
+						// put on cooldown
+						this.abilities.E.duration = this.abilities.E.maxDur;
 						this.abilities.E.cooldown = this.abilities.E.maxCool;
 						
 						// loop players and heal them
@@ -1585,9 +1595,13 @@ game.engine = (function(){
 						}
 						break;
 					case PLAYER_CLASSES.RANGER:
+						// throw a grenade
+						projectiles.push(new Projectile(this.position.x+this.bounds.x/2, this.position.y+this.bounds.y/4, enemies[0], PROJECTILE_TYPES.GRENADE, false));
+						this.abilities.E.duration = this.abilities.E.maxDur;
+						this.abilities.E.cooldown = this.abilities.E.maxCool;
 						break;
 					case PLAYER_CLASSES.MAGI:
-						// ice over terrains
+						// stun the enemy
 						enemies[0].stunTicks = 300;
 						particleSystems.push(new ParticleSystem(enemies[0], PARTICLE_TYPES.STUN, 300, 30, 0.2));
 						this.abilities.E.duration = this.abilities.E.maxDur;
@@ -1746,10 +1760,15 @@ game.engine = (function(){
 					victim.damage(this.projType.strength());
 				
 					// if this is a magi fireball, ignite the enemy
-					if (this.projType === PROJECTILE_TYPES.MAGIFIREBALL) {
+					if (this.projType === PROJECTILE_TYPES.MAGIFIREBALL || this.projType === PROJECTILE_TYPES.GRENADE) {
 						particleSystems.push(new ParticleSystem(victim, PARTICLE_TYPES.FLAME, 60, 30, 5));
 						victim.fireTicks = 60;
 					}
+				}
+				
+				// the grenade gets a particle burst on hit
+				if (this.projType === PROJECTILE_TYPES.GRENADE) {
+					particleSystems.push(new ParticleSystem({position: this.position.clone(), bounds: this.bounds.clone()}, PARTICLE_TYPES.FLAME, 1, 30, 60));
 				}
 			
 				// delete this one
