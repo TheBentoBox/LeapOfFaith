@@ -24,8 +24,21 @@ game.engine = (function(){
 	var time = 0;
 	//}
 	
-	// ASSETS
-	var background = new Image();
+	//== ASSETS ==//{
+		//== World ==//{
+			var background = new Image();
+		//== End World ==//}
+		
+		//== Player ==//{
+			var paladinImg = new Image();
+			var rangerImg = new Image();
+			var magiImg = new Image();
+		//== End Player ==//}
+		
+		//== Skills ==//{
+			
+		//== End Skills ==//}
+	//== END UI ==//}
 	
 	// GAME VARIABLES //{
 	// General
@@ -78,6 +91,7 @@ game.engine = (function(){
 	var paladin = {};			// direct reference to the paladin
 	var ranger = {};			// direct reference to the ranger
 	var magi = {};				// direct reference to the magi
+	var leader = {};			// reference to the current party leader
 	
 	// Player classes
 	var PLAYER_CLASSES = {		// enum storing class info
@@ -136,7 +150,7 @@ game.engine = (function(){
 	var enemies = [];
 	var ENEMY_TYPES = {
 		GATOR: {
-			name: "GATOR",
+			name: "Gator",
 			health: 75,
 			img: new Image(),
 			width: 100,
@@ -170,7 +184,7 @@ game.engine = (function(){
 			width: 45,
 			height: 13,
 			gravity: true,
-			velocity: 35
+			velocity: 33
 		},
 		MAGIFIREBALL: {
 			strength: function() { return 5 + magi.abilities.Q.level*1.5;},
@@ -282,17 +296,12 @@ game.engine = (function(){
 				// Switch party order on clicks
 				// loop and cycle if they aren't running already
 				if (currentGameState === GAME_STATE.RUNNING) {
-					for (var i = 0; i < players.length; ++i) {
-						// only cycle living players
-						if (players[i].deathTime === 0) {
-							// left click - cycle left
-							if (e.which === 1)
-								players[i].cycleOrder(1);
-							// right click - cycle right
-							if (e.which === 3)
-								players[i].cycleOrder(-1);
-						}
-					};
+					if (e.which === 1) {
+						cycleParty(1);
+					}
+					else if (e.which === 3) {
+						cycleParty(-1);
+					}
 				};
 				
 				// if the player has died
@@ -337,88 +346,298 @@ game.engine = (function(){
 		// callback for button presses
 		window.addEventListener("keyup", keyRelease);
 		
-		//== Register Ability UI ==//
-		// HUD box for current abilities
-		windowManager.makeUI("abilityHUD", 0, canvas.height*7/8, canvas.width/6, canvas.height/8);
-		// set ability box to sandstone colors
-		windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
-		windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
-		windowManager.toggleUI("abilityHUD");
-		// ability buttons
-		windowManager.makeButton("abilityHUD", "ability1", 10, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(){game.engine.keyPress({keyCode: KEY.Q});});
-		windowManager.modifyButton("abilityHUD", "ability1", "fill", {color: "#30d0ff"});
-		windowManager.modifyButton("abilityHUD", "ability1", "border", {color: "#0b85a8", width: 2});
-		windowManager.modifyButton("abilityHUD", "ability1", "text", {string: "Ability 1", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		windowManager.makeButton("abilityHUD", "ability2", canvas.width/12 + 5, 10, canvas.width/12 - 15, canvas.height/8 - 20, function() {game.engine.keyPress({keyCode: KEY.W});});
-		windowManager.modifyButton("abilityHUD", "ability2", "fill", {color: "#30d0ff"});
-		windowManager.modifyButton("abilityHUD", "ability2", "border", {color: "#0b85a8", width: 2});
-		windowManager.modifyButton("abilityHUD", "ability2", "text", {string: "Ability 2", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.makeButton("abilityHUD", "ability3", canvas.width/6, 10, canvas.width/12 - 15, canvas.height/8 - 20, function(eKey){game.engine.keyPress({keyCode: KEY.E});});
-		//windowManager.modifyButton("abilityHUD", "ability3", "fill", {color: "#30d0ff"});
-		//windowManager.modifyButton("abilityHUD", "ability3", "border", {color: "#0b85a8", width: 2});
-		//windowManager.modifyButton("abilityHUD", "ability3", "text", {string: "Ability 3", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.toggleButton("abilityHUD", "ability3");
-		
-		// score HUD
-		windowManager.makeUI("scoreHUD", canvas.width-150, 0, 150, 50);
-		// set fill to gradient
-		var grad = ctx.createLinearGradient(0, 0, 150, 0);
-		grad.addColorStop(0, "rgba(0, 0, 0, 0)");
-		grad.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-		windowManager.modifyUI("scoreHUD", "fill", {color: grad});
-		windowManager.toggleUI("scoreHUD");
-		// score text
-		windowManager.makeText("scoreHUD", "score", 10, 10, 130, 30, "Score: %v", "20pt Calibri", "white");
-		
-		//== Register Between-level Upgrade Shop UI ==//
-		// black background for shop window
-		windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
-		windowManager.modifyUI("shopHUD", "fill", {color: "rgba(0, 0, 0, 0.65)"});
-		// main box that makes up shop window
-		windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
-		windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
-		windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
-		// 'next level' button
-		windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
-		windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
-		windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
-		windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//== Player ability upgrades ==//
-		// Paladin Q
-		//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
-		//windowManager.modifyButton("shopHUD", "paladinQ", "fill", {color: "#30d0ff"});
-		//windowManager.modifyButton("shopHUD", "paladinQ", "border", {color: "#0b85a8", width: 2});
-		//windowManager.modifyButton("shopHUD", "paladinQ", "text", {string: "+Shield Duration", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.toggleButton("shopHUD", "paladinQ");	
-		// Paladin W
-		//windowManager.makeButton("shopHUD", "paladinW", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
-		//windowManager.modifyButton("shopHUD", "paladinW", "fill", {color: "#30d0ff"});
-		//windowManager.modifyButton("shopHUD", "paladinW", "border", {color: "#0b85a8", width: 2});
-		//windowManager.modifyButton("shopHUD", "paladinW", "text", {string: "+Dash Speed", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
-		//windowManager.toggleButton("shopHUD", "paladinW");	
+		//== BUILD UI ELEMENTS ==//{
+			//== Main Menu ==//{
+				windowManager.makeUI("titleScreen", 0, 0, canvas.width, canvas.height);
+				var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+				grad.addColorStop(0, "#ddce8f");
+				grad.addColorStop(1, "#6E643B");
+				windowManager.modifyUI("titleScreen", "fill", {color: grad});
+				
+				// game title
+				windowManager.makeText("titleScreen", "title", 50, 50, canvas.width, "default", "Leap of Faith", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.toggleUI("titleScreen");
+				
+				// start game button
+				windowManager.makeButton("titleScreen", "startButton", 60, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {game.engine.setupGame();});
+				windowManager.modifyButton("titleScreen", "startButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("titleScreen", "startButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("titleScreen", "startButton", "text", {string: "Start", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// instructions button
+				windowManager.makeButton("titleScreen", "instructionButton", 250, 5*canvas.height/6, canvas.width/5, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("instructionScreen");});
+				windowManager.modifyButton("titleScreen", "instructionButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("titleScreen", "instructionButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("titleScreen", "instructionButton", "text", {string: "Instructions", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// credits button
+				windowManager.makeButton("titleScreen", "creditButton", 540, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("titleScreen"); windowManager.toggleUI("creditScreen");});
+				windowManager.modifyButton("titleScreen", "creditButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("titleScreen", "creditButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("titleScreen", "creditButton", "text", {string: "Credits", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+			//== End Menu ==//}
+			
+			//== Instruction Screen ==//{
+				windowManager.makeUI("instructionScreen", 0, 0, canvas.width, canvas.height);
+				windowManager.modifyUI("instructionScreen", "fill", {color: grad});
+				windowManager.activateUIPausing("instructionScreen");
+				
+				// instruction text
+				windowManager.makeText("instructionScreen", "title", 50, 50, "default", "default", "Instructions", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.makeText("instructionScreen", "instructions", 65, 130, canvas.width - 50, "default", 
+					"LMB/RMB:     Cycle party members%n" +
+					"Left/Right:  Cycle party members%n" +
+					"Space:       Jump/Double-jump%n" +
+					"Q/W/E        Activate abilities%n" +
+					"Party members regenerate health and respawn over time.%n" +
+					"Earn experience by surviving and killing enemies.%n" +
+					"Upgrade your party members between levels.%n", 
+					"20pt 'Uncial Antiqua'", "#666044"
+				);
+				windowManager.modifyText("instructionScreen", "instructions", "padding", {top: 0, right: 0, bottom: 0, left: 0, line: 20});
+				
+				// back button
+				windowManager.makeButton("instructionScreen", "backButton", canvas.width * 7/8 - 50, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("instructionScreen"); windowManager.toggleUI("titleScreen");});
+				windowManager.modifyButton("instructionScreen", "backButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("instructionScreen", "backButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("instructionScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+			//== End Instructions ==//}
+				
+			//== Credit Screen ==//{
+				windowManager.makeUI("creditScreen", 0, 0, canvas.width, canvas.height);
+				windowManager.modifyUI("creditScreen", "fill", {color: grad});
+				windowManager.activateUIPausing("creditScreen");
+				
+				// instruction text
+				windowManager.makeText("creditScreen", "title", 50, 50, "default", "default", "Credits", "40pt 'Uncial Antiqua'", "#666044");
+				windowManager.makeText("creditScreen", "credits", 65, 130, canvas.width - 50, "default", 
+					"Engine:        Jake Ben-Tovim%n" +
+					"Interface:     Joe Kapusta%n" +
+					"Art:           Michelle Leadley%n" +
+					"Design:        Austin White%n", 
+					"24pt 'Uncial Antiqua'", "#666044"
+				);
+				windowManager.modifyText("creditScreen", "credits", "padding", {top: 0, right: 0, bottom: 0, left: 0, line: 20});
+				
+				// back button
+				windowManager.makeButton("creditScreen", "backButton", canvas.width * 7/8 - 50, 5*canvas.height/6, canvas.width/8, canvas.height/12, function() {windowManager.toggleUI("creditScreen"); windowManager.toggleUI("titleScreen");});
+				windowManager.modifyButton("creditScreen", "backButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("creditScreen", "backButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("creditScreen", "backButton", "text", {string: "Back", css: "24pt 'Uncial Antiqua'", color: "#b7a86d"});
+			//== End Credits ==//}
+			
+			//== Pause Screen ==//{
+				windowManager.makeUI("pauseScreen", canvas.width/3, canvas.height/3, canvas.width/3, canvas.height/3);
+				windowManager.modifyUI("pauseScreen", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("pauseScreen", "border", {color: "#b7a86d", width: 6});
+				windowManager.activateUIPausing("pauseScreen");
+				windowManager.makeText("pauseScreen", "pause", 20, 20, "default", "default", "Paused", "30pt 'Uncial Antiqua'", "#b7a86d");
+				
+				// continue button
+				windowManager.makeButton("pauseScreen", "continueButton", 20, 80, canvas.width/3 - 40, canvas.height/12, function() {game.engine.resumeGame();});
+				windowManager.modifyButton("pauseScreen", "continueButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("pauseScreen", "continueButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("pauseScreen", "continueButton", "text", {string: "Continue", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// quit button
+				windowManager.makeButton("pauseScreen", "quitButton", 20, 160, canvas.width/3 - 40, canvas.height/12, function() {
+					windowManager.deactivateUI("all");
+					windowManager.activateUI("titleScreen");
+					currentGameState = GAME_STATE.START;
+				});
+				windowManager.modifyButton("pauseScreen", "quitButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("pauseScreen", "quitButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("pauseScreen", "quitButton", "text", {string: "Quit", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"}); 
+			//== End Pause ==//}
+			
+			//== Death Screen ==//{
+				windowManager.makeUI("deathScreen", canvas.width/3, canvas.height/3, canvas.width/3, canvas.height/3);
+				windowManager.modifyUI("deathScreen", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("deathScreen", "border", {color: "#b7a86d", width: 6});
+				windowManager.activateUIPausing("deathScreen");
+				windowManager.makeText("deathScreen", "dead", 20, 20, canvas.width / 3 - 40, "default", "You died...", "30pt 'Uncial Antiqua'", "#b7a86d");
+				
+				// new game button
+				windowManager.makeButton("deathScreen", "restartButton", 20, 80, canvas.width/3 - 40, canvas.height/12, function() {windowManager.deactivateUI("deathScreen"); game.engine.setupGame();});
+				windowManager.modifyButton("deathScreen", "restartButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("deathScreen", "restartButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("deathScreen", "restartButton", "text", {string: "New game", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"});
+				
+				// quit button
+				windowManager.makeButton("deathScreen", "quitButton", 20, 160, canvas.width/3 - 40, canvas.height/12, function() {
+					windowManager.deactivateUI("all");
+					windowManager.activateUI("titleScreen");
+					currentGameState = GAME_STATE.START;
+				});
+				windowManager.modifyButton("deathScreen", "quitButton", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("deathScreen", "quitButton", "border", {color: "#b7a86d", width: 4});
+				windowManager.modifyButton("deathScreen", "quitButton", "text", {string: "Quit", css: "20pt 'Uncial Antiqua'", color: "#b7a86d"}); 
+			//== End Death ==//}
+			
+			//== Ability UI ==//{
+				// HUD box for current abilities
+				windowManager.makeUI("abilityHUD", 0, canvas.height*6/7, canvas.width*0.19, canvas.height/7);
+				
+				// set ability box to sandstone colors
+				windowManager.modifyUI("abilityHUD", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("abilityHUD", "border", {color: "#b7a86d", width: 3});
+				
+				//== Ability Buttons ==//
+				//ability 1
+				windowManager.makeButton("abilityHUD", "qButton", 10, 10, 64, 64, function(){game.engine.keyPress({keyCode: KEY.Q, simulated: true});});
+				windowManager.modifyButton("abilityHUD", "qButton", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "qButton", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "qButton", "text", {string: "Q", css: "20pt 'Uncial Antiqua'", color: "#0b85a8"});
+				
+				// ability 2
+				windowManager.makeButton("abilityHUD", "wButton", 84, 10, 64, 64, function() {game.engine.keyPress({keyCode: KEY.W, simulated: true});});
+				windowManager.modifyButton("abilityHUD", "wButton", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "wButton", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "wButton", "text", {string: "W", css: "20pt 'Uncial Antiqua'", color: "#0b85a8"});
+				
+				// ability 3
+				windowManager.makeButton("abilityHUD", "eButton", 158, 10, 64, 64, function(eKey){game.engine.keyPress({keyCode: KEY.E, simulated: true});});
+				windowManager.modifyButton("abilityHUD", "eButton", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("abilityHUD", "eButton", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("abilityHUD", "eButton", "text", {string: "E", css: "20pt 'Uncial Antiqua'", color: "#0b85a8"});
+			
+				//== Cooldown Bars ==//
+				// ability 1
+				windowManager.makeBar("abilityHUD", "qBar", 10, 80, 64, 10, 1, 1, 0);
+				windowManager.modifyBar("abilityHUD", "qBar", "fill", {foreColor: "#376573", backColor: "#30d0ff"});
+				windowManager.modifyBar("abilityHUD", "qBar", "border", {color: "#0b85a8", width: "1"});
+				
+				// ability 2
+				windowManager.makeBar("abilityHUD", "wBar", 84, 80, 64, 10, 1, 1, 0);
+				windowManager.modifyBar("abilityHUD", "wBar", "fill", {foreColor: "#376573", backColor: "#30d0ff"});
+				windowManager.modifyBar("abilityHUD", "wBar", "border", {color: "#0b85a8", width: "1"});
+				
+				// ability 3
+				windowManager.makeBar("abilityHUD", "eBar", 158, 80, 64, 10, 1, 1, 0);
+				windowManager.modifyBar("abilityHUD", "eBar", "fill", {foreColor: "#376573", backColor: "#30d0ff"});
+				windowManager.modifyBar("abilityHUD", "eBar", "border", {color: "#0b85a8", width: "1"});
+			//== End Abilities ==//}
+			
+			//== Experience UI ==//{
+				windowManager.makeUI("expHUD", canvas.width*3/4, 0, canvas.width/4, 50);
+				
+				// set fill color
+				windowManager.modifyUI("expHUD", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("expHUD", "border", {color: "#b7a86d", width: 3});
+				
+				// experience text
+				windowManager.makeText("expHUD", "experience", 10, 10, canvas.width/4, 30, "Experience: %v", "20pt 'Uncial Antiqua'", "#b7a86d");
+			//== End Experience ==//}
+			
+			//== Player UI ==//{
+				windowManager.makeUI("playerHUD", 0, 0, canvas.width*0.21, canvas.height*0.24);
+				
+				// set colors
+				windowManager.modifyUI("playerHUD", "fill", {color: "#ddce8f"});
+				windowManager.modifyUI("playerHUD", "border", {color: "#b7a86d", width: 3});
+				
+				//== Player Images ==//
+				// paladin
+				windowManager.makeImage("playerHUD", "paladinImg", 5, 5, 50, 50, paladinImg);
+				windowManager.modifyImage("playerHUD", "paladinImg", "fill", {color: "#666044"});
+				windowManager.modifyImage("playerHUD", "paladinImg", "border", {color: "#b7a86d", width: 2});
+				
+				// ranger
+				windowManager.makeImage("playerHUD", "rangerImg", 5, 60, 50, 50, rangerImg);
+				windowManager.modifyImage("playerHUD", "rangerImg", "fill", {color: "#666044"});
+				windowManager.modifyImage("playerHUD", "rangerImg", "border", {color: "#b7a86d", width: 2});
+				
+				// magi
+				windowManager.makeImage("playerHUD", "magiImg", 5, 115, 50, 50, magiImg);
+				windowManager.modifyImage("playerHUD", "magiImg", "fill", {color: "#666044"});
+				windowManager.modifyImage("playerHUD", "magiImg", "border", {color: "#b7a86d", width: 2});
+				
+				//== Health Bars ==//
+				// paladin
+				windowManager.makeBar("playerHUD", "paladinHealth", 60, 23, 200, 20, PLAYER_CLASSES.PALADIN.health, PLAYER_CLASSES.PALADIN.health, 0);
+				windowManager.modifyBar("playerHUD", "paladinHealth", "fill", {foreColor: "#080", backColor: "#800"});
+				windowManager.modifyBar("playerHUD", "paladinHealth", "border", {color: "#b7a86d", width: 2});
+				
+				// ranger
+				windowManager.makeBar("playerHUD", "rangerHealth", 60, 78, 200, 20, PLAYER_CLASSES.RANGER.health, PLAYER_CLASSES.RANGER.health, 0);
+				windowManager.modifyBar("playerHUD", "rangerHealth", "fill", {foreColor: "#080", backColor: "#800"});
+				windowManager.modifyBar("playerHUD", "rangerHealth", "border", {color: "#b7a86d", width: 2});
+				
+				// magi
+				windowManager.makeBar("playerHUD", "magiHealth", 60, 133, 200, 20, PLAYER_CLASSES.MAGI.health, PLAYER_CLASSES.MAGI.health, 0);
+				windowManager.modifyBar("playerHUD", "magiHealth", "fill", {foreColor: "#080", backColor: "#800"});
+				windowManager.modifyBar("playerHUD", "magiHealth", "border", {color: "#b7a86d", width: 2});
+			//== End Player ==//}
+			
+			//== Upgrade Shop UI ==//{
+				// black background for shop window
+				windowManager.makeUI("shopHUD", 0, 0, canvas.width, canvas.height);
+				windowManager.modifyUI("shopHUD", "fill", {color: "rgba(0, 0, 0, 0.65)"});
+				
+				// main box that makes up shop window
+				windowManager.makeButton("shopHUD", "mainPanel", canvas.width/8, canvas.height/8, canvas.width*.75, canvas.height*.75, undefined);
+				windowManager.modifyButton("shopHUD", "mainPanel", "fill", {color: "#ddce8f"});
+				windowManager.modifyButton("shopHUD", "mainPanel", "border", {color: "#b7a86d", width: 4});
+				
+				// 'next level' button
+				windowManager.makeButton("shopHUD", "nextLevel", canvas.width*7/8 - 120, canvas.height/8 + 5, 115, 50, game.engine.setupLevel);
+				windowManager.modifyButton("shopHUD", "nextLevel", "fill", {color: "#30d0ff"});
+				windowManager.modifyButton("shopHUD", "nextLevel", "border", {color: "#0b85a8", width: 2});
+				windowManager.modifyButton("shopHUD", "nextLevel", "text", {string: "Next Level", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				
+				//== Player ability upgrades ==//
+				// Paladin Q
+				//windowManager.makeButton("shopHUD", "paladinQ", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {console.log(game.engine);});
+				//windowManager.modifyButton("shopHUD", "paladinQ", "fill", {color: "#30d0ff"});
+				//windowManager.modifyButton("shopHUD", "paladinQ", "border", {color: "#0b85a8", width: 2});
+				//windowManager.modifyButton("shopHUD", "paladinQ", "text", {string: "+Shield Duration", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				//windowManager.toggleButton("shopHUD", "paladinQ");	
+				
+				// Paladin W
+				//windowManager.makeButton("shopHUD", "paladinW", 1.5*canvas.width/8, 3*canvas.height/8, 160, 50, function() {game.engine.paladin.abilities.W.levelUp();});
+				//windowManager.modifyButton("shopHUD", "paladinW", "fill", {color: "#30d0ff"});
+				//windowManager.modifyButton("shopHUD", "paladinW", "border", {color: "#0b85a8", width: 2});
+				//windowManager.modifyButton("shopHUD", "paladinW", "text", {string: "+Dash Speed", css: "12pt 'Uncial Antiqua'", color: "#0b85a8"});
+				//windowManager.toggleButton("shopHUD", "paladinW");
+			//== End Shop ==//}
+		//== END UI ==//}
 		
 		// BEGIN main game tick
-		update();
+		loop();
 	};
 	
 	// Setup a new game
 	function setupGame() {
 		// reset variables
 		score = 0;
+		experience = 0;
 		currentLevel = 0;
 		currentGameState = GAME_STATE.RUNNING;
 		
+		// deactivate menu
+		windowManager.deactivateUI("titleScreen");
+		
 		// SETUP: game
 		// create the players
-		players[0] = paladin = new Player(PLAYER_CLASSES.PALADIN);
+		players = [];
+		players[0] = paladin = leader = new Player(PLAYER_CLASSES.PALADIN);
 		players[1] = ranger = new Player(PLAYER_CLASSES.RANGER);
 		players[2] = magi = new Player(PLAYER_CLASSES.MAGI);
+		
+		// update ability HUD
+		windowManager.modifyBar("abilityHUD", "qBar", "target", {tgtVar: leader.abilities.Q.cooldown, tgtMax: leader.abilities.Q.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "wBar", "target", {tgtVar: leader.abilities.W.cooldown, tgtMax: leader.abilities.W.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "eBar", "target", {tgtVar: leader.abilities.E.cooldown, tgtMax: leader.abilities.E.maxCool, tgtMin: 0});
 		
 		// prepare the level
 		setupLevel();
 		
 		// start music loop
+		bgAudio.currentTime = 0;
 		bgAudio.play();
+		
+		// show HUD
+		activateHUD();
 	};
 	
 	// Setup the next level
@@ -459,9 +678,15 @@ game.engine = (function(){
 	
 	// Load game assets (images and sounds)
 	function loadAssets() {
+		// world
 		background.src = "assets/Wall720.png";
 		TERRAIN_TYPES.BASE.img.src = "assets/TileSandstone100.png";
 		TERRAIN_TYPES.LAVA.img.src = "assets/lava.png";
+		
+		// player
+		paladinImg.src = "assets/paladinImg.png";
+		rangerImg.src = "assets/rangerImg.png";
+		magiImg.src = "assets/magiImg.png";
 		
 		PLAYER_CLASSES.PALADIN.img.src = "assets/paladinRun.png";
 		PLAYER_CLASSES.PALADIN.shield.src = "assets/shield.png";
@@ -489,37 +714,37 @@ game.engine = (function(){
 		player.play();
 	};
 	
+	// main loop - always runs
+	function loop() {
+		animationID = requestAnimationFrame(loop);
+		
+		if (currentGameState === GAME_STATE.RUNNING || currentGameState === GAME_STATE.BETWEEN)
+			update();
+		
+		// draw UI with all relevant data
+		// game HUD
+		if (currentGameState === GAME_STATE.RUNNING) {
+			windowManager.updateAndDraw([
+				{name:"experience", value:[experience]},
+				{name:"paladinHealth", value: [paladin.health]},
+				{name:"rangerHealth", value: [ranger.health]},
+				{name:"magiHealth", value: [magi.health]},
+				{name:"qBar", value: [leader.abilities.Q.cooldown]},
+				{name:"wBar", value: [leader.abilities.W.cooldown]},
+				{name:"eBar", value: [leader.abilities.E.cooldown]}
+			]);
+		}
+		else {
+			windowManager.updateAndDraw([]);
+		}
+	}
+	
 	// main game tick
 	function update() {
-		// scedule next draw frame
-		animationID = requestAnimationFrame(update);
+		// reset/calculate control variables
 		dt = calculateDeltaTime();
 		postProcesses = [];
 		++time;
-		
-		// start game if on start screen and space or start is being pressed
-		if (currentGameState === GAME_STATE.START) {
-			if (keys[KEY.SPACE] || mouseDown) {
-				setupGame();
-			}
-			else {
-				ctx.fillStyle = "rgb(20, 20, 20)";
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-				ctx.fill();
-				fillText(ctx, "Welcome to Leap of Faith", canvas.width/2, canvas.height/2-100, "30pt 'Uncial Antiqua'", "white");
-				fillText(ctx, "Left and right click or arrows to cycle party members left or right", canvas.width/2, canvas.height/2-50, "20pt Calibri", "white");
-				fillText(ctx, "Press space to jump. You can double jump.", canvas.width/2, canvas.height/2-20, "20pt Calibri", "white");
-				fillText(ctx, "Press Q or W to activate the party leader's primary/secondary abilities", canvas.width/2, canvas.height/2+10, "20pt Calibri", "white");
-				fillText(ctx, "Party members respawn after a delay, and they regen health slowly", canvas.width/2, canvas.height/2+40, "20pt Calibri", "white");
-				fillText(ctx, "Get points from surviving and killing enemies", canvas.width/2, canvas.height/2+70, "20pt Calibri", "white");
-				fillText(ctx, "(The enemies are the boxes with pro jumping and flying skills)", canvas.width/2, canvas.height/2+95, "12pt Calibri", "white");
-				fillText(ctx, "Press H to view high scores", canvas.width/2, canvas.height/2+140, "20pt Calibri", "white");
-				fillText(ctx, "Press space to start", canvas.width/2, canvas.height/2+170, "20pt Calibri", "white");
-				fillText(ctx, "Have fun.", canvas.width/2, canvas.height/2+200, "20pt Calibri", "white");
-				fillText(ctx, "Code: Jake Ben-Tovim and Joe Kapusta, Art: Michelle Leadley, Design & Audio: Austin White", canvas.width/2, canvas.height-20, "10pt Calibri", "white");
-			}
-			return;
-		}
 		
 		// draw high score screen
 		if (currentGameState === GAME_STATE.HIGHSCORE) {
@@ -545,11 +770,6 @@ game.engine = (function(){
 			}
 			return;
 		};
-	 	
-	 	// if paused, bail out of loop
-		if (currentGameState === GAME_STATE.PAUSED) {
-			return;
-		}
 		
 		// push to between screen if the level is finished
 		if (currentLevelLength <= 0 && currentGameState != GAME_STATE.BETWEEN) {
@@ -580,6 +800,15 @@ game.engine = (function(){
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		offCtx.clearRect(0, 0, offCanvas.width, offCanvas.height);
 		offCtx.globalCompositeOperation = "source-over";
+		
+		// Switch party order with left or right arrow keys
+		// loop and cycle if they aren't switching already
+		if (currentGameState === GAME_STATE.RUNNING) {
+			if (keys[KEY.LEFT])
+				cycleParty(1);
+			else if (keys[KEY.RIGHT])
+				cycleParty(-1);
+		};
 		
 		// Draw the parallax background
 		for (var i = -(time*3 % background.width); i < canvas.width; i += background.width) {
@@ -639,6 +868,8 @@ game.engine = (function(){
 		if (numDead === players.length && currentGameState != GAME_STATE.DEAD) {
 			players = [];
 			currentGameState = GAME_STATE.DEAD;
+			windowManager.activateUI("deathScreen");
+			deactivateHUD();
 			
 			// attempt to add the score to the high score list
 			if (typeof(window.localStore) != undefined) {
@@ -809,6 +1040,7 @@ game.engine = (function(){
 			postProcesses[i]();
 		}
 		
+		/*
 		// draw HUDs
 		if (currentGameState != GAME_STATE.DEAD) {
 			game.windowManager.updateAndDraw([{name:"score", value:[score]}]);
@@ -835,7 +1067,8 @@ game.engine = (function(){
 			fillText(ctx, "Press space to restart", canvas.width/2, canvas.height/2 + 80, "24pt Calibri", "white");
 			ctx.restore();
 		};
-	};
+		*/
+	}
 	
 	// FUNCTION: checks if the object 'o' is on screen
 	function onScreen(o) {
@@ -1246,14 +1479,8 @@ game.engine = (function(){
 				ctx.fillRect(this.position.x+10, this.position.y - 14, this.bounds.x-20, 5);
 				ctx.fillStyle = "green";
 				ctx.fillRect(this.position.x+10, this.position.y - 14, (this.bounds.x-20) * (this.health/this.maxHealth), 5);
-				
-				// draw cooldown bars
-				ctx.fillStyle = "rgb(0, 255, 255)";
-				ctx.fillRect(this.position.x+10, this.position.y - 9, (this.bounds.x-20) * (this.abilities.Q.cooldown/this.abilities.Q.maxCool), 3);
-				ctx.fillStyle = "rgb(0, 205, 205)";
-				ctx.fillRect(this.position.x+10, this.position.y - 6, (this.bounds.x-20) * (this.abilities.W.cooldown/this.abilities.W.maxCool), 3);
 			ctx.restore();
-		};
+		}
 			
 		/* ATTACKING */
 		// FUNCTION: 1st attack ('Q')
@@ -1358,22 +1585,13 @@ game.engine = (function(){
 						}
 						break;
 					case PLAYER_CLASSES.RANGER:
-						// loop players and force a jump after a delay based on party order
-						for (var i = 0; i < players.length; ++i) {
-							// only schedule jumps for living players
-							if (players[i].deathTime === 0) {
-								setTimeout(players[i].jump, players[i].order*jumpFunction(), 15, 1, true);
-							}
-						}; 
-						this.abilities.W.duration = this.abilities.W.maxDur;
-						this.abilities.W.cooldown = this.abilities.W.maxCool;
 						break;
 					case PLAYER_CLASSES.MAGI:
 						// ice over terrains
 						enemies[0].stunTicks = 300;
 						particleSystems.push(new ParticleSystem(enemies[0], PARTICLE_TYPES.STUN, 300, 30, 0.2));
-						this.abilities.W.duration = this.abilities.W.maxDur;
-						this.abilities.W.cooldown = this.abilities.W.maxCool;
+						this.abilities.E.duration = this.abilities.E.maxDur;
+						this.abilities.E.cooldown = this.abilities.E.maxCool;
 						break;
 				};
 			};
@@ -1428,6 +1646,7 @@ game.engine = (function(){
 			if (!onScreen(this)) {
 				// delete this one
 				projectiles.safeSplice(projectiles.indexOf(this), 1);
+				lightSources.safeSplice(lightSources.indexOf(this.light), 1);
 				particleSystems.safeSplice(particleSystems.indexOf(this.system), 1);
 				return;
 			};
@@ -1853,22 +2072,14 @@ game.engine = (function(){
 	// PAUSE FUNCTION: pauses the game
 	function pauseGame() {
 		// Don't let them pause the title screen
-		if (currentGameState != GAME_STATE.PAUSED && currentGameState != GAME_STATE.START) {
+		if (currentGameState === GAME_STATE.RUNNING) {
 			previousGameState = currentGameState;
 			currentGameState = GAME_STATE.PAUSED;
 			bgAudio.pause();
 			
-			// stop the animation loop if the player is alive
-			if (currentGameState === GAME_STATE.RUNNING)
-				cancelAnimationFrame(animationID);
-			
 			// draw the pause screen
-			ctx.save();
-			ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			fillText(ctx, "Paused", canvas.width/2, canvas.height/2, "30pt Calibri", "white");
-			fillText(ctx, "Press P to unpause", canvas.width/2, canvas.height/2+40, "24pt Calibri", "white");
-			ctx.restore();
+			windowManager.activateUI("pauseScreen");
+			deactivateHUD();
 		};
 	};
 	
@@ -1878,15 +2089,51 @@ game.engine = (function(){
 			currentGameState = previousGameState;
 			bgAudio.play();
 			
-			// forcibly end animation loop in case it's running
-			// only end the loop if the player is alive
+			// deactivate pause screen
+			windowManager.deactivateUI("pauseScreen");
 			if (currentGameState === GAME_STATE.RUNNING) {
-				cancelAnimationFrame(animationID);
-				// resume ticking
-				update();
+				activateHUD();
 			}
 		}
 	};
+	
+	// FUNCTION: returns reference to party leader
+	function firstPlayer() {
+		for (var i = 0; i < players.length; ++i)
+			if (players[i].order === 0)
+				return players[i];
+	}
+	
+	// FUNCTION: cycles party order
+	function cycleParty(direction) {
+		for (var i = 0; i < players.length; ++i) {
+			// only cycle living players
+			if (players[i].deathTime === 0) {
+				players[i].cycleOrder(direction);
+			}
+		}
+		// update leader
+		leader = firstPlayer();
+		
+		// update ability HUD
+		windowManager.modifyBar("abilityHUD", "qBar", "target", {tgtVar: leader.abilities.Q.cooldown, tgtMax: leader.abilities.Q.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "wBar", "target", {tgtVar: leader.abilities.W.cooldown, tgtMax: leader.abilities.W.maxCool, tgtMin: 0});
+		windowManager.modifyBar("abilityHUD", "eBar", "target", {tgtVar: leader.abilities.E.cooldown, tgtMax: leader.abilities.E.maxCool, tgtMin: 0});
+	}
+	
+	// FUCNTION: activate all HUD UI
+	function activateHUD() {
+		windowManager.activateUI("expHUD");
+		windowManager.activateUI("abilityHUD");
+		windowManager.activateUI("playerHUD");
+	}
+	
+	// FUNCTION: deactivate all HUD UI
+	function deactivateHUD() {
+		windowManager.deactivateUI("expHUD");
+		windowManager.deactivateUI("abilityHUD");
+		windowManager.deactivateUI("playerHUD");
+	}
 	
 	// FUNCTION: do things based on key presses
 	function keyPress(e) {
@@ -1986,7 +2233,8 @@ game.engine = (function(){
 		
 		// set the keycode to true
 		// we do this last so we can check if this is the first tick it's pressed
-		keys[e.keyCode] = true;
+		if (!e.simulated)
+			keys[e.keyCode] = true;
 	};
 	
 	// FUNCTION: do things based on key releases
