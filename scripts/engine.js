@@ -102,14 +102,14 @@ game.engine = (function(){
 			shield: new Image(),
 			width: 65,
 			height: 150,
-			qDur: 300,
-			qCool: 350,
+			qDur: 250,
+			qCool: 450,
 			qSnd: "shield.mp3",
-			wDur: 24,
-			wCool: 350,
-			wSnd: "arrow.mp3",
+			wDur: 18,
+			wCool: 400,
+			wSnd: "whoosh.mp3",
 			eDur: 0,
-			eCool: 1800,
+			eCool: 2000,
 			eSnd: "heal.mp3"
 		},
 		RANGER: {
@@ -119,7 +119,7 @@ game.engine = (function(){
 			width: 65,
 			height: 145,
 			qDur: 0,
-			qCool: 5,
+			qCool: 15,
 			qSnd: "arrow.mp3",
 			wDur: 0,
 			wCool: 300,
@@ -135,13 +135,13 @@ game.engine = (function(){
 			width: 65,
 			height: 130,
 			qDur: 0,
-			qCool: 30,
+			qCool: 60,
 			qSnd: "fireball.mp3",
-			wDur: 200,
-			wCool: 650,
+			wDur: 20,
+			wCool: 800,
 			wSnd: "iceBridge.mp3",
-			eDur: 0,
-			eCool: 650,
+			eDur: 180,
+			eCool: 950,
 			eSnd: "stun.mp3"
 		}
 	};
@@ -195,7 +195,7 @@ game.engine = (function(){
 			velocity: 15
 		},
 		MAGIFIREBALL: {
-			strength: function() { return 5 + magi.abilities.Q.level*1.5;},
+			strength: function() { return 5 + magi.abilities.Q.level*2; },
 			img: new Image(),
 			postProcess: true,
 			width: 40,
@@ -663,7 +663,7 @@ game.engine = (function(){
 	function setupGame() {
 		// reset variables
 		score = 0;
-		experience = 0;
+		experience = 10000;
 		currentLevel = 0;
 		currentGameState = GAME_STATE.RUNNING;
 		
@@ -1362,30 +1362,33 @@ game.engine = (function(){
 			275 - players.length*100,
 			canvas.height-TERRAIN_HEIGHT-this.bounds.y-250
 		);
-		this.abilities = {				// stores current cooldown on each skill
+		this.abilities = {				// stores info about each skill
 			Q: {
+				strength: function() {},
 				duration: 0,
 				cooldown: 0,
 				level: 0,
 				maxDur: this.classType.qDur,
 				maxCool: this.classType.qCool,
-				levelUp: function() {
-					console.log(this);
-				}
+				levelUp: function() {}
 			},
 			W: {
+				strength: function() {},
 				duration: 0,
 				cooldown: 0,
 				level: 0,
 				maxDur: this.classType.wDur,
-				maxCool: this.classType.wCool
+				maxCool: this.classType.wCool,
+				levelUp: function() {}
 			},
 			E: {
+				strength: function() {},
 				duration: 0,
 				cooldown: 0,
 				level: 0,
 				maxDur: this.classType.eDur,
-				maxCool: this.classType.eCool
+				maxCool: this.classType.eCool,
+				levelUp: function() {}
 			},
 			decrement: function() {
 				this.Q.duration = Math.max(0, this.Q.duration-1);
@@ -1400,10 +1403,88 @@ game.engine = (function(){
 				this.Q.cooldown = this.W.cooldown = this.E.cooldown = 0;
 			}
 		};
+		
 		this.time = this.order*20;		// used to control animation timing
 		this.frameWidth = this.classType.img.width/28; // width of 1 frame from the spritesheet
 		this.frameHeight = this.classType.img.height;  // height of 1 frame from the spritesheet
 		this.offset = new Victor(this.frameWidth/-3, this.frameHeight/-8); // player's image offset
+					
+		// Update ability information based on class type
+		switch (this.classType) {
+			// Paladin!
+			case PLAYER_CLASSES.PALADIN:
+				// Paladin-specific level up functions
+				this.abilities.Q.levelUp = function() {
+					if (experience >= 30 + this.level*20 && this.level < 10) {
+						this.maxDur += 45;
+						this.maxCool -= 20;
+						++this.level;
+					}
+				}
+				this.abilities.W.levelUp = function() {
+					if (experience >= 30 + this.level*15 && this.level < 10) {
+						this.maxDur += 3;
+						this.maxCool -= 20;
+						++this.level;
+					}
+				}
+				this.abilities.E.levelUp = function() {
+					if (experience >= 50 + this.level*75 && this.level < 10) {
+						this.maxCool -= 60;
+						++this.level;
+					}
+				}
+				break;
+			case PLAYER_CLASSES.RANGER:
+				// Ranger-specific level up functions
+				this.abilities.Q.levelUp = function() {
+					if (experience >= 30 + this.level*15 && this.level < 10) {
+						this.maxCool -= 1.4;
+						++this.level;
+					}
+				}
+				this.abilities.W.levelUp = function() {
+					if (experience >= 20 + this.level*20 && this.level < 10) {
+						this.maxCool -= 24;
+						++this.level;
+					}
+				}
+				this.abilities.E.levelUp = function() {
+					if (experience >= 50 + this.level*30 && this.level < 10) {
+						this.maxCool -= 30;
+						++this.level;
+					}
+				}
+				// Ranger-specific strength functions
+				this.abilities.Q.strength = function() { return 3 + ranger.abilities.Q.level; };
+				this.abilities.E.strength = function() { return 30 + ranger.abilities.E.level*5; };
+				break;
+			case PLAYER_CLASSES.MAGI:
+				// Magi-specific level up functions
+				this.abilities.Q.levelUp = function() {
+					if (experience >= 25 + this.level*25 && this.level < 10) {
+						this.maxCool -= 4;
+						++this.level;
+					}
+				}
+				this.abilities.W.levelUp = function() {
+					if (experience >= 50 + this.level*50 && this.level < 10) {
+						this.maxDur += 15;
+						this.maxCool -= 30;
+						++this.level;
+					}
+				}
+				this.abilities.E.levelUp = function() {
+					if (experience >= 50 + this.level*35 && this.level < 10) {
+						this.maxDur += 15;
+						this.maxCool -= 30;
+						++this.level;
+					}
+				}
+				// Magi-specific strength functions
+				this.abilities.Q.strength = function() { return 5 + magi.abilities.Q.level*2; };
+				break;
+		}
 		
 		// FUNCTION: cycle order by a number
 		// can be negative to cycle right
@@ -1647,8 +1728,8 @@ game.engine = (function(){
 						break;
 					case PLAYER_CLASSES.MAGI:
 						// stun the enemy
-						enemies[0].stunTicks = 300;
-						particleSystems.push(new ParticleSystem(enemies[0], PARTICLE_TYPES.STUN, 300, 30, 0.2));
+						enemies[0].stunTicks = this.abilities.E.maxDur;
+						particleSystems.push(new ParticleSystem(enemies[0], PARTICLE_TYPES.STUN, this.abilities.E.maxDur, 30, 0.2));
 						this.abilities.E.duration = this.abilities.E.maxDur;
 						this.abilities.E.cooldown = this.abilities.E.maxCool;
 						break;
