@@ -304,6 +304,7 @@ game.windowManager = (function(){
 				break;
 			case("padding"):
 				text.setPadding(args.top, args.right, args.bottom, args.left, args.line);
+				break;
 			case("fill"):
 				text.setFill(args.color);
 				break;
@@ -315,6 +316,7 @@ game.windowManager = (function(){
 				break;
 			case("target"):
 				text.setTarget(args.targets);
+				break;
 		}
 	}
 	
