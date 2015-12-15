@@ -10,6 +10,7 @@ var KEY = {					// "enum" equating keycodes to names (e.g. keycode 32 = spacebar
 		D: 68,
 		E: 69,
 		H: 72,
+		L: 76,
 		P: 80,
 		Q: 81,
 		R: 82,
